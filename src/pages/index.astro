@@ -1,11 +1,28 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
+// src/pages/index.astro
+// Import the BaseLayout component
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Carousel from "../components/Carousel.astro"; // Assuming Carousel is in components
+import axios from "axios";
+import ProductList from "../components/ProductList";
+import React from "react";
+import { useState, useEffect } from "react";
+import ProductCard from "../components/ProductCard.astro"; // Assuming ProductCard is in components
+import Product from "../components/Product.jsx";
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+import CategoryList from "../components/CategoryList.jsx"; // Assuming CategoryList is in components
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<!-- Use the BaseLayout component, passing the page title as a prop -->
+<BaseLayout title="Нүүр хуудас">
+    <!-- Content specific to the home page goes here, inside the BaseLayout -->
+    <Carousel />
+
+    <div
+        id="product-list"
+        class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4"
+    >
+    <Product />
+        <ProductList />
+    </div>
+</BaseLayout>

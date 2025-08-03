@@ -1,0 +1,40 @@
+---
+import '../styles/global.css';
+
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import Icons from "../components/Icons.astro";
+
+interface Props {
+    title: string;
+    description?: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="mn">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="icon" href="../img/titem_white.png" type="image/png" />
+        {description && <meta name="description" content={description} />}
+        <title>{title}</title>
+    </head>
+    <body class="bg-gradient-to-br from-gray-100 via-white to-gray-200 text-gray-700 min-h-screen">
+        <div class="flex flex-col min-h-screen">
+            <Header class="sticky top-0 z-50 shadow-md bg-white/90 backdrop-blur" />
+
+            <main class="container mx-auto px-6 py-8 flex-grow rounded-lg shadow-lg bg-white/80 mt-6 mb-6">
+                <slot />
+            </main>
+
+            <div class="flex justify-center mb-4">
+                <Icons />
+            </div>
+            <Footer class="bg-gray-900 text-gray-100 py-6 mt-auto shadow-inner" />
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    </body>
+</html>

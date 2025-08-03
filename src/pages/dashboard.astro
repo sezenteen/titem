@@ -1,0 +1,114 @@
+---
+import AdminLaLayout from '../layouts/BaseLayout.astro';
+// We'll use client:only for these components because they need full client-side interactivity
+// and React state. This also prevents them from loading all at once, improving initial page load.
+import CategoryAdmin from '../components/admin/CategoryAdmin.jsx';
+import ProductAdmin from '../components/admin/ProductAdmin.jsx';
+import UserAdmin from '../components/admin/UserAdmin.jsx';
+import AdminLayout from '../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Админ Панел | Удирдах самбар">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-4xl font-extrabold text-gray-900 mb-4 tracking-tight">
+            <span class="text-[#f7941e]">А</span>дмин <span class="text-[#003375]">П</span>анел
+        </h1>
+        <p class="text-gray-600 mb-8 text-lg">
+            Дэлгүүрийн бүтээгдэхүүн, ангилал болон хэрэглэгчийн мэдээллийг удирдах самбар.
+        </p>
+
+        <nav class="mb-8 text-sm text-gray-600" aria-label="Breadcrumb">
+            <ol class="list-none p-0 inline-flex">
+                <li class="flex items-center">
+                    <a href="/" class="hover:text-[#f7941e] transition-colors">Нүүр хуудас</a>
+                    <span class="mx-2 text-gray-400">/</span>
+                </li>
+                <li class="flex items-center">
+                    <span class="font-semibold text-gray-800">Админ Панел</span>
+                </li>
+            </ol>
+        </nav>
+
+        <div x-data="{ activeTab: 'categories' }" class="bg-white rounded-xl shadow-xl p-6">
+            <div role="tablist" aria-label="Админ удирдлагын хэсгүүд" class="flex border-b border-gray-200 mb-6 -mx-6 px-6">
+                <button
+                    role="tab"
+                    id="tab-categories"
+                    :aria-selected="activeTab === 'categories'"
+                    aria-controls="panel-categories"
+                    @click="activeTab = 'categories'"
+                    class="py-3 px-6 text-lg font-medium outline-none -mb-px
+                           transition-colors duration-200
+                           text-gray-600 hover:text-gray-900
+                           border-b-2 border-transparent hover:border-gray-300
+                           "
+                    :class="{ 'border-[#f7941e] text-[#f7941e] hover:border-[#f7941e]': activeTab === 'categories' }"
+                >
+                    Ангилал
+                </button>
+                <button
+                    role="tab"
+                    id="tab-products"
+                    :aria-selected="activeTab === 'products'"
+                    aria-controls="panel-products"
+                    @click="activeTab = 'products'"
+                    class="py-3 px-6 text-lg font-medium outline-none -mb-px
+                           transition-colors duration-200
+                           text-gray-600 hover:text-gray-900
+                           border-b-2 border-transparent hover:border-gray-300
+                           "
+                    :class="{ 'border-[#f7941e] text-[#f7941e] hover:border-[#f7941e]': activeTab === 'products' }"
+                >
+                    Бүтээгдэхүүн
+                </button>
+                <button
+                    role="tab"
+                    id="tab-users"
+                    :aria-selected="activeTab === 'users'"
+                    aria-controls="panel-users"
+                    @click="activeTab = 'users'"
+                    class="py-3 px-6 text-lg font-medium outline-none -mb-px
+                           transition-colors duration-200
+                           text-gray-600 hover:text-gray-900
+                           border-b-2 border-transparent hover:border-gray-300
+                           "
+                    :class="{ 'border-[#f7941e] text-[#f7941e] hover:border-[#f7941e]': activeTab === 'users' }"
+                >
+                    Хэрэглэгч
+                </button>
+            </div>
+
+            <div id="panel-categories" role="tabpanel" tabindex="0" :hidden="activeTab !== 'categories'" class="p-4 sm:p-0">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Ангилал Удирдах</h2>
+                <CategoryAdmin client:load />
+            </div>
+
+            <div id="panel-products" role="tabpanel" tabindex="0" :hidden="activeTab !== 'products'" class="p-4 sm:p-0">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Бүтээгдэхүүн Удирдах</h2>
+                <ProductAdmin client:load />
+            </div>
+
+            <div id="panel-users" role="tabpanel" tabindex="0" :hidden="activeTab !== 'users'" class="p-4 sm:p-0">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">Хэрэглэгч Удирдах</h2>
+                <UserAdmin client:load />
+            </div>
+        </div>
+    </div>
+</AdminLayout>
+
+<script>
+    import Alpine from 'alpinejs';
+    window.Alpine = Alpine;
+    Alpine.start();
+</script>
+
+<style>
+    /* Custom scrollbar for better aesthetics */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+    }
+</style>

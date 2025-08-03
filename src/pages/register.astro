@@ -1,0 +1,174 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+// Define custom colors if not already in your tailwind.config.cjs
+const primaryBlue = '#004AAD';
+const accentCyan = '#00C2CB';
+const textDark = '#212529';
+---
+
+<BaseLayout title="Бүртгүүлэх" description="Шинэ хэрэглэгчийн бүртгэлийн хуудас">
+    <main class="container mx-auto px-4 py-16 flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div class="bg-white shadow-xl rounded-xl p-8 sm:p-10 w-full max-w-md border border-gray-200 animate-fade-in">
+            <h1 class="text-3xl font-extrabold text-center text-primaryBlue mb-6 tracking-tight">
+                Бүртгүүлэх
+            </h1>
+            <p class="text-center text-gray-600 mb-8">
+                Шинэ бүртгэл үүсгэхийн тулд доорх мэдээллийг оруулна уу.
+            </p>
+
+            <form id="register-form-page" class="space-y-6">
+                <div>
+                    <label for="register-email-page" class="block text-sm font-semibold text-textDark mb-2">Имэйл хаяг</label>
+                    <input
+                        type="email"
+                        id="register-email-page"
+                        name="email"
+                        required
+                        autocomplete="email"
+                        placeholder="Таны имэйл"
+                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
+                    />
+                </div>
+                <div>
+                    <label for="register-password-page" class="block text-sm font-semibold text-textDark mb-2">Нууц үг</label>
+                    <input
+                        type="password"
+                        id="register-password-page"
+                        name="password"
+                        required
+                        autocomplete="new-password"
+                        placeholder="Нууц үг үүсгэх (дор хаяж 6 тэмдэгт)"
+                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
+                    />
+                </div>
+                <div>
+                    <label for="register-confirm-password-page" class="block text-sm font-semibold text-textDark mb-2">Нууц үг давтах</label>
+                    <input
+                        type="password"
+                        id="register-confirm-password-page"
+                        name="confirm_password"
+                        required
+                        autocomplete="new-password"
+                        placeholder="Нууц үгээ давтах"
+                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    id="register-button-page"
+                    class="w-full bg-primaryBlue text-white font-bold py-3 px-4 rounded-lg hover:bg-accentCyan focus:outline-none focus:ring-2 focus:ring-primaryBlue focus:ring-opacity-50 transition duration-200 ease-in-out transform hover:scale-105"
+                >
+                    Бүртгүүлэх
+                </button>
+
+                <p id="register-message-page" class="text-center text-sm mt-4" role="status" aria-live="polite"></p>
+
+                <p class="text-center text-sm text-gray-600 mt-6">
+                    Бүртгэлтэй юу?
+                    <a href="/login" class="font-medium text-primaryBlue hover:text-accentCyan transition duration-200 ease-in-out hover:underline">
+                        Нэвтрэх
+                    </a>
+                </p>
+            </form>
+        </div>
+    </main>
+
+    <script is:inline>
+        const primaryBlue = '#004AAD';
+        const textDark = '#212529';
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const form = document.getElementById("register-form-page");
+            const emailInput = document.getElementById("register-email-page");
+            const passwordInput = document.getElementById("register-password-page");
+            const confirmPasswordInput = document.getElementById("register-confirm-password-page");
+            const messageElement = document.getElementById("register-message-page");
+            const registerButton = document.getElementById("register-button-page");
+
+            if (!form || !emailInput || !passwordInput || !confirmPasswordInput || !messageElement || !registerButton) {
+                console.error("One or more required registration page elements not found.");
+                return;
+            }
+
+            form.addEventListener("submit", async function (event) {
+                event.preventDefault();
+
+                const email = (emailInput as HTMLInputElement).value.trim();
+                const password = (passwordInput as HTMLInputElement).value.trim();
+                const confirmPassword = (confirmPasswordInput as HTMLInputElement).value.trim();
+
+                // Client-side validation
+                if (password.length < 6) {
+                    messageElement.textContent = "❌ Нууц үг дор хаяж 6 тэмдэгтээс тогтоно!";
+                    messageElement.style.color = "red";
+                    return;
+                }
+                if (password !== confirmPassword) {
+                    messageElement.textContent = "❌ Нууц үгнүүд таарахгүй байна!";
+                    messageElement.style.color = "red";
+                    return;
+                }
+
+                messageElement.textContent = "";
+                messageElement.style.color = textDark;
+                registerButton.disabled = true;
+                registerButton.textContent = "Бүртгүүлж байна...";
+                registerButton.classList.add("opacity-75", "cursor-not-allowed");
+
+                try {
+                    // This is a placeholder API call.
+                    // In a real application, you'd send a request to your backend
+                    // to create a new user account.
+                    const response = await fetch("http://localhost:5000/register", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({ email, password })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json(); // Assuming your backend sends some data on success
+                        messageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Одоо нэвтрэх хуудас руу шилжинэ үү.";
+                        messageElement.style.color = "green";
+                        form.reset(); // Clear the form
+                        // Optionally redirect to login page after a delay
+                        setTimeout(() => window.location.href = "/login", 2000);
+                    } else {
+                        // Assuming the backend sends a JSON error message
+                        const errorData = await response.json();
+                        messageElement.textContent = `❌ Алдаа: ${errorData.message || 'Бүртгүүлэхэд алдаа гарлаа.'}`;
+                        messageElement.style.color = "red";
+                    }
+                } catch (error) {
+                    console.error("Registration request failed:", error);
+                    messageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+                    messageElement.style.color = "red";
+                } finally {
+                    registerButton.disabled = false;
+                    registerButton.textContent = "Бүртгүүлэх";
+                    registerButton.classList.remove("opacity-75", "cursor-not-allowed");
+                }
+            });
+        });
+    </script>
+
+    <style is:global>
+        /* Re-use fade-in animation if not already global */
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.5s ease-out forwards;
+        }
+    </style>
+</BaseLayout>

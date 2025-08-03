@@ -1,0 +1,36 @@
+
+<!-- Sidebar Toggle Button -->
+<button id="sidebarToggle" class="absolute top-4 right-4 bg-[#F7941E] text-white px-3 py-2 rounded-md shadow-lg z-50 md:hidden" style="font-family: Optima, sans-serif;">
+    ☰ Меню
+</button>
+
+<aside id="sidebar" class="w-full md:w-64 bg-gradient-to-b from-[#003375] to-[#F7941E] h-screen fixed md:relative md:sticky md:top-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto shadow-lg md:overflow-hidden z-40" style="font-family: Optima, sans-serif;">
+    <nav class="flex flex-col h-full">
+        <!-- Logo Section -->
+        <div class="flex items-center justify-center p-6 md:p-8">
+            <img src="../img/titem_white.png" alt="Титэм Плаза" class="h-16 md:h-24 w-auto">
+        </div>
+
+        <!-- Navigation Menu -->
+        <ul class="flex flex-col flex-grow space-y-2 p-4">
+            <li>
+                <a href="#" class="block text-white text-lg md:text-base px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#FFAA00] hover:text-white text-center" style="font-family: Optima, sans-serif;">Удирдлага</a>
+            </li>
+
+        </ul>
+    </nav>
+</aside>
+
+<!-- Sidebar Toggle Script -->
+<script>
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebar.classList.toggle('translate-x-0');
+        });
+    }
+</script>
+</script>

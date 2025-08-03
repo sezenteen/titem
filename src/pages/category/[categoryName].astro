@@ -1,0 +1,93 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import axios from 'axios';
+
+export async function getStaticPaths() {
+    let categories = [];
+    try {
+        const response = await axios.get('http://localhost:8080/api/category');
+        categories = response.data;
+    } catch (error) {
+        console.error("Error fetching categories for static paths:", error);
+    }
+    return categories.map((category: { id: number; name: string }) => ({
+        params: { categoryName: category.name.toLowerCase().replace(/\s+/g, '-') },
+        props: { categoryId: category.id, categoryTitle: category.name }
+    }));
+}
+
+const { categoryName } = Astro.params;
+const { categoryId, categoryTitle } = Astro.props;
+
+// Pagination setup
+const PAGE_SIZE = 12;
+const url = new URL(Astro.request.url);
+const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+
+let products: any[] = [];
+let totalProducts = 0;
+try {
+    const productsResponse = await axios.get(`http://localhost:8080/api/product/cat/${categoryId}`);
+    const allProducts = productsResponse.data.filter((product: any) => product && product.imagePath);
+    totalProducts = allProducts.length;
+    products = allProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+} catch (error) {
+    console.error(`Error fetching products for category ${categoryName} (ID: ${categoryId}):`, error);
+    products = [];
+}
+
+const totalPages = Math.ceil(totalProducts / PAGE_SIZE);
+function getPageUrl(p: number) {
+    return `/category/${categoryName}?page=${p}`;
+}
+---
+
+<BaseLayout title={categoryTitle ? `${categoryTitle} Ангилал` : `Ангилал`}>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">
+            {categoryTitle || 'Ангилал'}
+        </h1>
+
+        <nav class="mb-6 text-sm text-gray-600" aria-label="Breadcrumb">
+            <ol class="list-none p-0 inline-flex">
+                <li class="flex items-center">
+                    <a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a>
+                    <span class="mx-2">/</span>
+                </li>
+                <li class="flex items-center">
+                    <span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span>
+                </li>
+            </ol>
+        </nav>
+
+        {products.length > 0 ? (
+            <>
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {products.map((product: any) => (
+                        <ProductCard product={product} />
+                    ))}
+                </div>
+                <div class="flex justify-center mt-8 space-x-2">
+                    {Array.from({ length: totalPages }, (_, i) => (
+                        <a
+                            href={getPageUrl(i + 1)}
+                            class={`px-3 py-1 rounded ${page === i + 1 ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                        >
+                            {i + 1}
+                        </a>
+                    ))}
+                </div>
+            </>
+        ) : (
+            <div class="text-center py-12">
+                <p class="text-xl text-gray-600">Одоогоор энэ ангилалд бүтээгдэхүүн байхгүй байна.</p>
+                <p class="text-gray-500 mt-2">Дараарай дахин шалгана уу эсвэл өөр ангилал сонгоно уу.</p>
+            </div>
+        )}
+    </div>
+</BaseLayout>
+
+<style>
+/* Add any category page specific styles here if needed */
+</style>

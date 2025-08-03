@@ -1,0 +1,226 @@
+---
+// src/components/Header.astro
+// Import the React CategoryList component.
+// It will be hydrated on the client side using client:load.
+import CategoryList from "./CategoryList.jsx";
+---
+
+<header
+    id="main-header"
+    x-data="{
+        isSticky: false,
+        isSidebarOpen: false, // For the profile/user sidebar
+        isMobileMenuOpen: false, // For the main mobile navigation menu
+        isCategoryDropdownOpen: false, // For categories within the mobile menu
+        lastScroll: 0,
+        // Logic for sticky header based on scroll
+        init() {
+            window.addEventListener('scroll', () => {
+                this.isSticky = window.scrollY > 50;
+                this.lastScroll = window.scrollY; // Update lastScroll on every scroll
+            });
+            // Listen for clicks outside the mobile menu to close it
+            // This is safer than a global document click listener
+            this.$watch('isMobileMenuOpen', (value) => {
+                if (value) {
+                    document.body.style.overflow = 'hidden'; // Prevent body scroll when mobile menu is open
+                } else {
+                    document.body.style.overflow = '';
+                    this.isCategoryDropdownOpen = false; // Close category dropdown when mobile menu closes
+                }
+            });
+        }
+    }"
+    :class="{ 'shadow-md fixed top-0 left-0 w-full z-50 bg-white transition-all duration-300': isSticky, 'relative': !isSticky }"
+    class="relative z-50 transition-all duration-300"
+>
+    <div
+        class="hidden md:flex justify-between items-center text-white bg-[#f7941e] px-6 py-1 text-sm"
+    >
+        <div class="flex items-center w-full justify-between">
+            <span>Титэмд тавтай морил</span>
+            <ul class="flex space-x-4">
+                <li>
+                    <a
+                        href="#contact"
+                        class="hover:text-gray-300 transition-colors"
+                        >Хамтран ажиллах</a>
+                </li>
+                <li>
+                    <a
+                        href="#contact"
+                        class="hover:text-gray-300 transition-colors"
+                        >Тусламж</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div
+        class="bg-white flex flex-wrap items-center justify-between px-6 py-3 gap-4 md:gap-0"
+    >
+        <a href="/" class="flex items-center gap-3">
+            <img
+                src="/img/logo.png"
+                alt="Титэм Плаза"
+                class="h-12 md:h-16 w-auto"
+            />
+        </a>
+
+        <div
+            class="flex-grow max-w-xl mx-auto hidden md:flex items-center bg-gray-100 px-3 py-1 rounded-lg"
+        >
+            <input
+                type="text"
+                placeholder="Хайх"
+                class="flex-grow bg-transparent outline-none text-black px-2"
+            />
+            <button
+                class="bg-[#f7941e] hover:bg-[#003375] text-white px-3 py-1 rounded-lg transition-colors"
+            >
+                <img
+                    src="/img/icons8-search-24.png"
+                    class="w-5"
+                    alt="Search icon"
+                />
+            </button>
+        </div>
+
+        <nav class="hidden lg:flex space-x-6 text-sm font-medium">
+            <a href="/" class="hover:text-[#f7941e] transition-colors"
+                >Нүүр хуудас</a
+            >
+            <a href="/about" class="hover:text-[#f7941e] transition-colors"
+                >Бидний тухай</a
+            >
+        </nav>
+
+        <div class="flex items-center space-x-3">
+            <button
+                @click="isMobileMenuOpen = !isMobileMenuOpen"
+                class="lg:hidden text-2xl text-[#f7941e] hover:text-[#003375] focus:outline-none focus:ring-2 focus:ring-[#f7941e] transition-colors"
+            >
+                ☰
+            </button>
+        </div>
+    </div>
+
+    <div
+        x-show="isMobileMenuOpen"
+        x-cloak
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 -translate-y-4"
+        x-transition:enter-end="opacity-100 translate-y-0"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0"
+        x-transition:leave-end="opacity-0 -translate-y-4"
+        @click.outside="isMobileMenuOpen = false"
+        class="absolute inset-x-0 top-full lg:hidden bg-white shadow-md rounded-b-lg px-6 py-4 text-gray-700 space-y-2 border-t border-gray-200"
+    >
+        <a
+            href="/about"
+            class="block hover:text-[#f7941e] transition-colors py-2"
+            >Бидний тухай</a
+        >
+        <a
+            href="#contact"
+            class="block hover:text-[#f7941e] transition-colors py-2"
+            >Хамтран ажиллах</a
+        >
+        <a
+            href="#footer"
+            class="block hover:text-[#f7941e] transition-colors py-2"
+            >Холбоо барих</a
+        >
+
+        <div
+            @click="isCategoryDropdownOpen = !isCategoryDropdownOpen"
+            class="flex items-center justify-between cursor-pointer py-2 hover:bg-gray-50 rounded-md px-2 -mx-2 transition-colors"
+        >
+            <span class="font-medium">Ангилал</span>
+            <svg
+                :class="{'rotate-180': isCategoryDropdownOpen}"
+                class="w-4 h-4 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                ><path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"></path></svg
+            >
+        </div>
+        <div
+            x-show="isCategoryDropdownOpen"
+            x-cloak
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 transform -translate-y-2"
+            x-transition:enter-end="opacity-100 transform translate-y-0"
+            x-transition:leave="transition ease-in duration-150"
+            x-transition:leave-start="opacity-100 transform translate-y-0"
+            x-transition:leave-end="opacity-0 transform -translate-y-2"
+            class="pl-4 pt-2 border-t border-gray-100 mt-2"
+        >
+            <CategoryList client:load />
+        </div>
+    </div>
+
+    <nav class="hidden lg:block bg-gray-50 border-t border-gray-200 py-2 px-6">
+        <div
+            class="flex overflow-x-auto scrollbar-hide space-x-6 text-sm font-medium text-gray-700"
+        >
+            <CategoryList client:load />
+        </div>
+    </nav>
+</header>
+
+<script>
+    // This script is for the sidebar click-outside logic if the sidebar
+    // is a separate, top-level element not directly inside the header's x-data.
+    // If your sidebar is also an Alpine.js component, consider using x-on:click.away
+    // directly on the sidebar element itself for a cleaner solution.
+    document.addEventListener("click", function (event) {
+        let headerElement = document.getElementById("main-header");
+        // We're checking if Alpine.js has initialized on the header and if its data is available
+        if (
+            headerElement &&
+            window.Alpine &&
+            window.Alpine.$data(headerElement)
+        ) {
+            let alpineData = window.Alpine.$data(headerElement);
+            // Assuming the sidebar is a global element, not directly part of the header's X-data scope
+            // If the sidebar is part of this component's X-data, Alpine's @click.outside on sidebar would be ideal.
+            let profileButton = headerElement.querySelector(
+                'button[alt="User profile icon"]',
+            ); // Select the profile button
+
+            // A more robust check for sidebar element. You should give your actual sidebar an ID.
+            let sidebarElement = document.getElementById(
+                "user-profile-sidebar",
+            ); // **IMPORTANT**: Replace with your actual sidebar ID
+
+            if (
+                alpineData.isSidebarOpen &&
+                sidebarElement &&
+                !sidebarElement.contains(event.target) &&
+                profileButton &&
+                !profileButton.contains(event.target)
+            ) {
+                alpineData.isSidebarOpen = false;
+            }
+        }
+    });
+</script>
+
+<style>
+    /* Styling for custom scrollbar hiding */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+</style>
