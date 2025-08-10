@@ -1,16 +1,19 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
-import axios from 'axios';
 
+// Build-time paths for categories
 export async function getStaticPaths() {
     let categories = [];
     try {
-        const response = await axios.get('http://localhost:8080/api/category');
-        categories = response.data;
+        const response = await fetch('http://localhost:8080/api/category');
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        categories = await response.json();
     } catch (error) {
         console.error("Error fetching categories for static paths:", error);
+        return [];
     }
+
     return categories.map((category: { id: number; name: string }) => ({
         params: { categoryName: category.name.toLowerCase().replace(/\s+/g, '-') },
         props: { categoryId: category.id, categoryTitle: category.name }
@@ -27,19 +30,48 @@ const page = parseInt(url.searchParams.get('page') ?? '1', 10);
 
 let products: any[] = [];
 let totalProducts = 0;
+let totalPages = 0;
+
 try {
-    const productsResponse = await axios.get(`http://localhost:8080/api/product/cat/${categoryId}`);
-    const allProducts = productsResponse.data.filter((product: any) => product && product.imagePath);
-    totalProducts = allProducts.length;
-    products = allProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    // Backend pagination: page is 0-indexed in Spring
+    const productsResponse = await fetch(
+        `http://localhost:8080/api/product/cat/${categoryId}?page=${page - 1}&size=${PAGE_SIZE}`
+    );
+
+    if (!productsResponse.ok) throw new Error(`HTTP error! status: ${productsResponse.status}`);
+
+    const data = await productsResponse.json();
+
+    // Spring Data returns { content, totalElements, totalPages, ... }
+    products = data.content.filter((product: any) => product && product.imagePath);
+    totalProducts = data.totalElements;
+    totalPages = data.totalPages;
 } catch (error) {
-    console.error(`Error fetching products for category ${categoryName} (ID: ${categoryId}):`, error);
+    console.error(`Error fetching paginated products for category ${categoryName}:`, error);
     products = [];
 }
 
-const totalPages = Math.ceil(totalProducts / PAGE_SIZE);
 function getPageUrl(p: number) {
     return `/category/${categoryName}?page=${p}`;
+}
+
+// Generate page numbers with ellipsis
+const pageRange = 2;
+const pages = [];
+if (totalPages > 1) {
+    if (page > pageRange + 1) {
+        pages.push(1);
+        pages.push("...");
+    }
+    for (let i = Math.max(1, page - pageRange); i <= Math.min(totalPages, page + pageRange); i++) {
+        pages.push(i);
+    }
+    if (page < totalPages - pageRange) {
+        if (page < totalPages - pageRange - 1) {
+            pages.push("...");
+        }
+        pages.push(totalPages);
+    }
 }
 ---
 
@@ -68,16 +100,41 @@ function getPageUrl(p: number) {
                         <ProductCard product={product} />
                     ))}
                 </div>
-                <div class="flex justify-center mt-8 space-x-2">
-                    {Array.from({ length: totalPages }, (_, i) => (
-                        <a
-                            href={getPageUrl(i + 1)}
-                            class={`px-3 py-1 rounded ${page === i + 1 ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                        >
-                            {i + 1}
-                        </a>
-                    ))}
-                </div>
+
+                {totalPages > 1 && (
+                    <div class="flex justify-center mt-8 space-x-2">
+                        {page > 1 && (
+                            <a
+                                href={getPageUrl(page - 1)}
+                                class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            >
+                                Өмнөх
+                            </a>
+                        )}
+
+                        {pages.map(p => (
+                            p === "..." ? (
+                                <span class="px-3 py-1 text-gray-500">...</span>
+                            ) : (
+                                <a
+                                    href={getPageUrl(p)}
+                                    class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
+                                >
+                                    {p}
+                                </a>
+                            )
+                        ))}
+
+                        {page < totalPages && (
+                            <a
+                                href={getPageUrl(page + 1)}
+                                class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            >
+                                Дараах
+                            </a>
+                        )}
+                    </div>
+                )}
             </>
         ) : (
             <div class="text-center py-12">
@@ -87,7 +144,3 @@ function getPageUrl(p: number) {
         )}
     </div>
 </BaseLayout>
-
-<style>
-/* Add any category page specific styles here if needed */
-</style>

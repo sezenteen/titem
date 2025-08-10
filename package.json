@@ -15,9 +15,10 @@
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "alpinejs": "^3.14.9",
-    "astro": "^5.12.3",
+    "astro": "^5.12.8",
     "axios": "^1.11.0",
     "html5-qrcode": "^2.3.8",
+    "quagga": "^0.12.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.11"

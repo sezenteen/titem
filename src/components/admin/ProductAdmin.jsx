@@ -1,467 +1,703 @@
-// src/components/admin/ProductAdmin.jsx
-import React, { useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from 'react-dom';
+import Quagga from "quagga";
 
-import BarcodeScanner from './BarcodeScanner'; // Ensure this path is correct
+// A mock component for AdminProductTable.
+// This displays the list of products in a responsive table format.
+// Pagination buttons are now included here.
+const AdminProductTable = ({ products, onEdit, onDelete, currentPage, totalPages, onPageChange }) => {
+  // Function to generate an array of page numbers to display in the pagination buttons
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxPagesToShow = 5; // You can adjust this number
+    let startPage = Math.max(0, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages - 1, startPage + maxPagesToShow - 1);
 
-const ProductAdmin = () => {
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]); // To populate category dropdown
-    const [measureUnits, setMeasureUnits] = useState([]); // To populate measure unit dropdown
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    if (endPage - startPage < maxPagesToShow - 1) {
+      startPage = Math.max(0, endPage - maxPagesToShow + 1);
+    }
 
-    const [newProduct, setNewProduct] = useState({
-        name: '',
-        shortName: '',
-        barcode: '',
-        price: 0,
-        categoryID: '', // Will store selected category ID
-        allowCityTax: true,
-        measureUnitID: '', // Will store selected measure unit ID
-        customCode: '',
-        imagePath: '', // For displaying existing path or new path
-        packageCount: 1,
-        mainCategoryCode: '',
-        isVATFree: false,
-    });
-    const [editingProduct, setEditingProduct] = useState(null); // Stores the product being edited
-    const [productImageFile, setProductImageFile] = useState(null); // For new image file
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+    return pageNumbers;
+  };
 
-    // --- NEW: Barcode Search State & Scanner Visibility ---
-    const [searchBarcode, setSearchBarcode] = useState(''); // State for the search input
-    const [barcodeScannerVisible, setBarcodeScannerVisible] = useState(false);
-
-    const API_URL = 'http://localhost:8080/api/product';
-    const CATEGORY_API_URL = 'http://localhost:8080/api/category';
-    const MEASURE_UNIT_API_URL = 'http://localhost:8080/api/measureunit';
-    const UPLOAD_API_URL = 'http://localhost:8080/api/upload'; // Explicit image upload URL
-
-    // --- FETCHING FUNCTIONS ---
-    // Use useCallback for memoization if these functions are passed as props to child components
-    const fetchProducts = useCallback(async () => {
-        setError(null);
-        setLoading(true);
-        try {
-            const response = await axios.get(API_URL);
-            setProducts(response.data);
-        } catch (err) {
-            setError('Бүтээгдэхүүн татахад алдаа гарлаа: ' + (err.response?.data?.message || err.message));
-            console.error("Failed to fetch products:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, []); // Empty dependency array means this function is created once
-
-    const fetchCategories = useCallback(async () => {
-        try {
-            const response = await axios.get(CATEGORY_API_URL);
-            setCategories(response.data);
-        } catch (err) {
-            console.error("Failed to fetch categories for dropdown:", err);
-        }
-    }, []);
-
-    const fetchMeasureUnits = useCallback(async () => {
-        try {
-            const response = await axios.get(MEASURE_UNIT_API_URL);
-            setMeasureUnits(response.data);
-        } catch (err) {
-            console.error("Failed to fetch measure units for dropdown:", err);
-        }
-    }, []);
-
-    // --- NEW: Search by Barcode Function ---
-    const searchProductsByBarcode = useCallback(async (barcode) => {
-        setError(null);
-        setLoading(true);
-        try {
-            const response = await axios.get(`${API_URL}/barcode/${barcode}`);
-            // Assuming your backend returns a single product object for exact match
-            // or null/empty response if not found. Adjust based on your API.
-            setProducts(response.data ? [response.data] : []); 
-            if (!response.data) {
-                setError('Энэ баркодтой бүтээгдэхүүн олдсонгүй.');
-            }
-        } catch (err) {
-            setError('Баркодоор хайхад алдаа гарлаа: ' + (err.response?.data?.message || err.message));
-            setProducts([]); // Clear products on error or no results
-            console.error("Failed to search product by barcode:", err);
-        } finally {
-            setLoading(false);
-        }
-    }, [API_URL]);
-
-
-    // --- EFFECT HOOKS ---
-    useEffect(() => {
-        fetchProducts();
-        fetchCategories();
-        fetchMeasureUnits();
-    }, [fetchProducts, fetchCategories, fetchMeasureUnits]); // Dependencies for useCallback functions
-
-    // --- HANDLERS ---
-    const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        if (editingProduct) {
-            setEditingProduct(prev => ({
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            }));
-        } else {
-            setNewProduct(prev => ({
-                ...prev,
-                [name]: type === 'checkbox' ? checked : value
-            }));
-        }
-    };
-
-    const handleFileChange = (e) => {
-        setProductImageFile(e.target.files[0]);
-    };
-
-    // --- NEW: Barcode Scan Handler ---
-    const handleBarcodeScan = (scannedBarcode) => {
-        if (editingProduct) {
-            setEditingProduct(prev => ({ ...prev, barcode: scannedBarcode }));
-        } else {
-            setNewProduct(prev => ({ ...prev, barcode: scannedBarcode }));
-        }
-        setSearchBarcode(scannedBarcode); // Also update the search input field
-        setBarcodeScannerVisible(false); // Hide scanner after scan
-        // Optionally, trigger a search immediately after scanning
-        searchProductsByBarcode(scannedBarcode); 
-    };
-
-    // --- NEW: Handle Search Barcode Input Change ---
-    const handleSearchBarcodeChange = (e) => {
-        setSearchBarcode(e.target.value);
-    };
-
-    // --- NEW: Handle Search Button Click ---
-    const handleSearchSubmit = (e) => {
-        e.preventDefault(); // Prevent form submission if it's within a form
-        if (searchBarcode.trim()) {
-            searchProductsByBarcode(searchBarcode.trim());
-        } else {
-            // If search bar is empty, fetch all products
-            fetchProducts();
-        }
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError(null); // Clear previous errors
-
-        let payload;
-        let url;
-        let method;
-
-        // Determine if it's an update or create operation
-        if (editingProduct) {
-            payload = {
-                ...editingProduct,
-                price: parseFloat(editingProduct.price),
-                packageCount: parseInt(editingProduct.packageCount),
-                // Ensure categoryID and measureUnitID are sent as objects with 'id'
-                categoryID: editingProduct.categoryID ? { id: parseInt(editingProduct.categoryID) } : null,
-                measureUnitID: editingProduct.measureUnitID ? { id: parseInt(editingProduct.measureUnitID) } : null
-            };
-            url = `${API_URL}/${editingProduct.id}`;
-            method = 'put';
-        } else {
-            payload = {
-                ...newProduct,
-                price: parseFloat(newProduct.price),
-                packageCount: parseInt(newProduct.packageCount),
-                categoryID: newProduct.categoryID ? { id: parseInt(newProduct.categoryID) } : null,
-                measureUnitID: newProduct.measureUnitID ? { id: parseInt(newProduct.measureUnitID) } : null
-            };
-            url = API_URL;
-            method = 'post';
-        }
-
-        // Handle image upload if a new file is selected
-        if (productImageFile) {
-            const formData = new FormData();
-            formData.append('file', productImageFile);
-
-            try {
-                const uploadResponse = await axios.post(UPLOAD_API_URL, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                payload.imagePath = uploadResponse.data.filePath; // Update payload with new image path
-            } catch (uploadErr) {
-                setError('Зураг байршуулахад алдаа гарлаа: ' + (uploadErr.response?.data?.message || uploadErr.message));
-                console.error("Image upload failed:", uploadErr);
-                return; // Stop if image upload fails
-            }
-        }
-
-        try {
-            const response = await axios({ method, url, data: payload });
-            if (editingProduct) {
-                // Update the product in the list with the full object returned by the server
-                setProducts(products.map(prod => prod.id === response.data.id ? response.data : prod));
-                setEditingProduct(null);
-            } else {
-                setProducts([...products, response.data]);
-                setNewProduct({ // Reset form
-                    name: '', shortName: '', barcode: '', price: 0, categoryID: '', allowCityTax: true,
-                    measureUnitID: '', customCode: '', imagePath: '', packageCount: 1, mainCategoryCode: '', isVATFree: false,
-                });
-            }
-            setProductImageFile(null); // Clear file input
-        } catch (err) {
-            setError('Бүтээгдэхүүн хадгалахад алдаа гарлаа: ' + (err.response?.data?.message || err.message));
-            console.error("Failed to save product:", err);
-        }
-    };
-
-    const handleDeleteProduct = async (id) => {
-        if (!window.confirm('Энэ бүтээгдэхүүнийг устгахдаа итгэлтэй байна уу?')) return;
-        setError(null); // Clear previous errors
-        try {
-            await axios.delete(`${API_URL}/${id}`);
-            setProducts(products.filter(prod => prod.id !== id));
-        } catch (err) {
-            setError('Бүтээгдэхүүн устгахад алдаа гарлаа: ' + (err.response?.data?.message || err.message));
-            console.error("Failed to delete product:", err);
-        }
-    };
-
-    const handleEditClick = (product) => {
-        // When setting editingProduct, ensure you store the ID for category/measureUnit
-        // so the dropdowns reflect the correct current selection.
-        setEditingProduct({
-            ...product,
-            categoryID: product.categoryID ? product.categoryID.id : '',
-            measureUnitID: product.measureUnitID ? product.measureUnitID.id : ''
-        });
-        setProductImageFile(null); // Clear any previously selected file when starting an edit
-    };
-
-    if (loading) return <p className="text-center text-gray-700">Бүтээгдэхүүн ачаалж байна...</p>;
-    
-    const currentProduct = editingProduct || newProduct;
-
-    return (
-        <div>
-            {/* Create/Edit Form */}
-            <form onSubmit={handleSubmit} className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">{editingProduct ? 'Бүтээгдэхүүн засах' : 'Шинэ бүтээгдэхүүн нэмэх'}</h3>
-                {error && <p className="text-red-500 text-sm mb-4">{error}</p>} {/* Display form-specific errors */}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-700">Нэр:</label>
-                        <input type="text" id="name" name="name" value={currentProduct.name} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" required />
-                    </div>
-                    <div>
-                        <label htmlFor="shortName" className="block text-sm font-medium text-gray-700">Богино нэр:</label>
-                        <input type="text" id="shortName" name="shortName" value={currentProduct.shortName} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2 " />
-                    </div>
-                    <div>
-                        <label htmlFor="barcode" className="block text-sm font-medium text-gray-700">Баркод:</label>
-                        <div className="flex items-center space-x-3">
-                            <input type="text" id="barcode" name="barcode" value={currentProduct.barcode} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2 flex-grow" />
-                            <button
-                                type="button"
-                                onClick={() => setBarcodeScannerVisible(true)}
-                                className="btn-secondary whitespace-nowrap !px-4 !py-2"
-                            >
-                                <img src="../img/scan.png" alt="scan" className="w-8 ml-5" />
-                                Скан хийх
-                            </button>
-                        </div>
-                        {/* Popover for Barcode Scanner */}
-                        {barcodeScannerVisible && (
-                            <div className="fixed inset-0 z-50 flex items-center justify-center">
-                                <div className="absolute inset-0 bg-black opacity-40" onClick={() => setBarcodeScannerVisible(false)} />
-                                <div className="relative bg-white rounded-lg p-6 max-w-lg w-full shadow-lg border border-gray-200">
-                                    <h4 className="text-xl font-semibold mb-4 text-gray-800">Баркод сканнердах</h4>
-                                    <BarcodeScanner onScanSuccess={handleBarcodeScan} />
-                                    <button
-                                        type="button"
-                                        onClick={() => setBarcodeScannerVisible(false)}
-                                        className="btn-secondary mt-4 bg-[#003375]"
-                                    >
-                                        Хаах
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <label htmlFor="price" className="block text-sm font-medium text-gray-700">Үнэ:</label>
-                        <input type="number" id="price" name="price" value={currentProduct.price} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" step="0.01" required />
-                    </div>
-                    <div>
-                        <label htmlFor="categoryID" className="block text-sm font-medium text-gray-700">Ангилал:</label>
-                        <select id="categoryID" name="categoryID" value={currentProduct.categoryID} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" required>
-                            <option value="">Ангилал сонгоно уу</option>
-                            {categories.map(cat => (
-                                <option key={cat.id} value={cat.id}>{cat.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="measureUnitID" className="block text-sm font-medium text-gray-700">Хэмжих нэгж:</label>
-                        <select id="measureUnitID" name="measureUnitID" value={currentProduct.measureUnitID} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" required>
-                            <option value="">Нэгж сонгоно уу</option>
-                            {measureUnits.map(unit => (
-                                <option key={unit.id} value={unit.id}>{unit.name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="customCode" className="block text-sm font-medium text-gray-700">Захиалгат код:</label>
-                        <input type="text" id="customCode" name="customCode" value={currentProduct.customCode} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" />
-                    </div>
-                    <div>
-                        <label htmlFor="packageCount" className="block text-sm font-medium text-gray-700">Багцын тоо:</label>
-                        <input type="number" id="packageCount" name="packageCount" value={currentProduct.packageCount} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" min="1" />
-                    </div>
-                    <div>
-                        <label htmlFor="mainCategoryCode" className="block text-sm font-medium text-gray-700">Үндсэн ангиллын код:</label>
-                        <input type="text" id="mainCategoryCode" name="mainCategoryCode" value={currentProduct.mainCategoryCode} onChange={handleChange} className="input-field border-2 rounded-md px-5 py-2" />
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="allowCityTax" name="allowCityTax" checked={currentProduct.allowCityTax} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                        <label htmlFor="allowCityTax" className="ml-2 text-sm font-medium text-gray-700">Хотын татвар зөвшөөрөх</label>
-                    </div>
-                    <div className="flex items-center">
-                        <input type="checkbox" id="isVATFree" name="isVATFree" checked={currentProduct.isVATFree} onChange={handleChange} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                        <label htmlFor="isVATFree" className="ml-2 text-sm font-medium text-gray-700">НӨАТгүй</label>
-                    </div>
-                    <div>
-                        <label htmlFor="productImageFile" className="block text-sm font-medium text-gray-700">Зураг:</label>
-                        <input type="file" id="productImageFile" name="productImageFile" onChange={handleFileChange} className="mt-1 block w-full text-sm text-gray-900 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                        {currentProduct.imagePath && (
-                            <p className="text-xs text-gray-500 mt-1">
-                                Одоогийн зураг: <a href={currentProduct.imagePath} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
-                                    {currentProduct.imagePath.split('/').pop()}
-                                </a>
-                                <img src={currentProduct.imagePath} alt="Product" className="mt-2 w-40 h-40 object-contain border rounded-md" />
-                            </p>
-                        )}
-                    </div>
-                </div>
-                <div className="flex space-x-3 mt-6">
-                    <button
-                        type="submit"
-                        className="btn-primary bg-gradient-to-tr from-[#f7941e] to-[#003375] text-white p-2 rounded-md hover:from-[#003375] hover:to-[#f7941e] transition-colors duration-200"
-                    >
-                        {editingProduct ? 'Хадгалах' : 'Нэмэх'}
-                    </button>
-                    {editingProduct && (
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setEditingProduct(null);
-                                setNewProduct({ // Reset new product form when canceling edit
-                                    name: '', shortName: '', barcode: '', price: 0, categoryID: '', allowCityTax: true,
-                                    measureUnitID: '', customCode: '', imagePath: '', packageCount: 1, mainCategoryCode: '', isVATFree: false,
-                                });
-                                setProductImageFile(null); // Clear file input on cancel
-                            }}
-                            className="btn-secondary bg-red-500 text-white p-2 rounded-md hover:bg-red-600 transition-colors duration-200"
-                        >
-                            Цуцлах
-                        </button>
-                    )}
-                </div>
-            </form>
-
-            {/* --- NEW: Barcode Search Section --- */}
-            <div className="mb-8 p-6 border border-gray-200 rounded-lg shadow-md bg-white">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">Баркодоор хайх</h3>
-                <div className="flex items-center space-x-3">
-                    <input
-                        type="text"
-                        placeholder="Баркод оруулна уу..."
-                        value={searchBarcode}
-                        onChange={handleSearchBarcodeChange}
-                        className="input-field border-2 rounded-md px-5 py-2 flex-grow"
-                    />
-                    <button
-                        type="button"
-                        onClick={handleSearchSubmit}
-                        className="btn-primary whitespace-nowrap !px-4 !py-2 rounded-md bg-gradient-to-tr from-[#f7941e] to-[#003375] text-white hover:from-[#003375] hover:to-[#f7941e] transition-colors duration-200"
-                    >
-                        Хайх
-                    </button>
-                    <button
-                        type="button"
-                        onClick={fetchProducts} // Button to clear search and show all products
-                        className="btn-secondary whitespace-nowrap !px-4 !py-2 rounded-md bg-[#003375] text-white hover:bg-[#f7941e] transition-colors duration-200"
-                    >
-                        Бүх бүтээгдэхүүнийг харуулах
-                    </button>
-                </div>
-            </div>
-
-            {/* Products List */}
-            <div className="overflow-x-auto bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-2xl font-bold text-gray-800 mb-6">Бүтээгдэхүүний жагсаалт</h3>
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">ID</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Зураг</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Нэр</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Баркод</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ангилал</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Үнэ</th>
-                            <th className="py-3 px-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Үйлдэл</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {products.length === 0 ? (
-                            <tr>
-                                <td colSpan="7" className="text-center py-4 text-gray-500">Бүтээгдэхүүн олдсонгүй.</td>
-                            </tr>
-                        ) : (
-                            products.map((product) => (
-                                <tr key={product.id} className="hover:bg-gray-50">
-                                    <td className="py-3 px-4 text-sm text-gray-900">{product.id}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">
-                                        {product.imagePath ? (
-                                            <img src={product.imagePath} alt={product.name} className="w-16 h-16 object-contain rounded-md border" />
-                                        ) : (
-                                            <div className="w-16 h-16 bg-gray-200 flex items-center justify-center text-gray-500 text-xs rounded-md">Зураггүй</div>
-                                        )}
-                                    </td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">{product.name}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">{product.barcode || 'N/A'}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">{product.categoryID?.name || 'N/A'}</td>
-                                    <td className="py-3 px-4 text-sm text-gray-900">₮{product.price.toLocaleString('mn-MN')}</td>
-                                    <td className="py-3 px-4 text-sm flex space-x-2">
-                                        <button
-                                            onClick={() => handleEditClick(product)}
-                                            className="btn-secondary !px-3 !py-1 mt-5 text-xs rounded-md bg-[#003375] text-white hover:bg-blue-600 transition-colors duration-200"
-                                        >
-                                            Засах
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteProduct(product.id)}
-                                            className="btn-danger !px-3 !py-1 mt-5 text-xs rounded-md bg-red-500 text-white hover:bg-red-700 transition-colors duration-200"
-                                        >
-                                            Устгах
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    );
+  return (
+    <div className="overflow-x-auto bg-white shadow-md rounded-lg p-4">
+      <h3 className="text-xl font-semibold mb-4 text-gray-800">Бүтээгдэхүүний жагсаалт</h3>
+      {products.length === 0 ? (
+        <p className="text-gray-600">Бүтээгдэхүүн олдсонгүй.</p>
+      ) : (
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Нэр</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Богино Нэр</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Баркод</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үнэ</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категори ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хэмжих Нэгж ID</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хотын Татвар</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">НӨАТгүй</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Үйлдэл</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {products.map((product, index) => (
+              <tr key={product.id || index} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.shortName}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.barcode}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.categoryID?.id}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.measureUnitID?.id}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.allowCityTax ? "Тийм" : "Үгүй"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.isVATFree ? "Тийм" : "Үгүй"}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <button
+                    onClick={() => onEdit(index)}
+                    className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium transition-colors"
+                  >
+                    Засах
+                  </button>
+                  <button
+                    onClick={() => onDelete(index)}
+                    className="text-red-600 hover:text-red-900 font-medium transition-colors"
+                  >
+                    Устгах
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center mt-4 space-x-2">
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 0}
+            className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Өмнөх
+          </button>
+          {getPageNumbers().map(page => (
+            <button
+              key={page}
+              onClick={() => onPageChange(page)}
+              className={`px-4 py-2 border rounded-md transition-colors ${
+                currentPage === page
+                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                  : "bg-white text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              {page + 1}
+            </button>
+          ))}
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages - 1}
+            className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Дараах
+          </button>
+        </div>
+      )}
+    </div>
+  );
 };
 
 
+// BarcodeScanner component using camera for barcode scanning with Quagga
+const BarcodeScanner = ({ onScanSuccess, onClose, showAlert }) => {
+  const scannerRef = useRef(null);
+
+  useEffect(() => {
+    if (!scannerRef.current) return;
+
+    Quagga.init(
+      {
+        inputStream: {
+          type: "LiveStream",
+          target: scannerRef.current,
+          constraints: {
+            facingMode: "environment", // Use the back camera on mobile devices
+          },
+        },
+        decoder: {
+          readers: ["ean_reader", "ean_8_reader", "code_128_reader", "upc_reader", "upc_e_reader"],
+        },
+        locate: true, // Enable detection of the barcode's location
+      },
+      (err) => {
+        if (err) {
+          showAlert("Камер эхлүүлэхэд алдаа гарлаа: " + err.message);
+          onClose(); // Close the modal on error
+          return;
+        }
+        Quagga.start();
+      }
+    );
+
+    // Event listener for when a barcode is detected
+    Quagga.onDetected((data) => {
+      if (data && data.codeResult && data.codeResult.code) {
+        Quagga.stop(); // Stop the scanner immediately
+        onScanSuccess(data.codeResult.code); // Call the success handler
+      }
+    });
+
+    // Cleanup function to stop Quagga when the component unmounts
+    return () => {
+      Quagga.offDetected();
+      Quagga.stop();
+    };
+    // eslint-disable-next-line
+  }, [onScanSuccess, onClose, showAlert]);
+
+  return (
+    <div className="flex flex-col items-center justify-center p-4">
+      <p className="text-gray-700 mb-4">Камер ашиглан баркод уншуулах.</p>
+      {/* The container for the video stream. We use Tailwind for responsive styling. */}
+      <div
+        ref={scannerRef}
+        className="w-full max-w-sm aspect-video rounded-lg overflow-hidden bg-black mb-4 border-2 border-gray-300"
+      />
+      <button
+        onClick={() => {
+          Quagga.stop();
+          onClose();
+        }}
+        className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
+      >
+        Хаах
+      </button>
+    </div>
+  );
+};
+
+// A custom Modal Component to replace native alert/confirm
+const Modal = ({ isOpen, title, message, type, onConfirm, onCancel, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm transform transition-all scale-100 opacity-100">
+        <h3 className="text-xl font-bold mb-4 text-gray-800">{title}</h3>
+        {message && <p className="text-gray-700 mb-6">{message}</p>}
+        {children}
+        <div className="flex justify-end space-x-3 mt-4">
+          {type === "confirm" && (
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              Үгүй
+            </button>
+          )}
+          <button
+            onClick={type === "alert" ? onClose : onConfirm}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          >
+            {type === "alert" ? "Хаах" : "Тийм"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
+// Main ProductAdmin Component
+const ProductAdmin = () => {
+  const [products, setProducts] = useState([]);
+  const [formVisible, setFormVisible] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState({
+    name: "", shortName: "", barcode: "", price: "",
+    categoryID: { id: "" }, allowCityTax: false,
+    measureUnitID: { id: "" }, customCode: "", imagePath: "",
+    packageCount: 1, mainCategoryCode: "", isVATFree: false,
+  });
+  const [editingIndex, setEditingIndex] = useState(null);
+  const [barcodeScannerVisible, setBarcodeScannerVisible] = useState(false);
+  const [searchBarcode, setSearchBarcode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0); // New state for current page
+  const [totalPages, setTotalPages] = useState(0); // New state for total pages
+  const PAGE_SIZE = 10; // You can adjust the page size here
+
+  const [modal, setModal] = useState({
+    isOpen: false, title: "", message: "", type: "alert",
+    onConfirm: () => {}, onCancel: () => {}, onClose: () => {},
+  });
+
+  // NOTE: The API_BASE is hardcoded. In a real application, this should be configurable.
+  const API_BASE = "http://localhost:8080/api/product";
+
+  const showAlert = useCallback((message, title = "Мэдээлэл") => {
+    setModal({
+      isOpen: true, title, message, type: "alert",
+      onClose: () => setModal((prev) => ({ ...prev, isOpen: false })),
+    });
+  }, []);
+
+  const showConfirm = useCallback((message, onConfirmCallback, title = "Баталгаажуулах") => {
+    setModal({
+      isOpen: true, title, message, type: "confirm",
+      onConfirm: () => {
+        onConfirmCallback();
+        setModal((prev) => ({ ...prev, isOpen: false }));
+      },
+      onCancel: () => setModal((prev) => ({ ...prev, isOpen: false })),
+    });
+  }, []);
+
+  // Updated fetchProducts to handle pagination.
+  // It now takes a page number as an argument.
+  const fetchProducts = useCallback(async (page = 0) => {
+    setLoading(true); setError(null);
+    try {
+      const response = await fetch(`${API_BASE}?page=${page}&size=${PAGE_SIZE}`);
+      if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+      const data = await response.json();
+      setProducts(data.content);
+      setCurrentPage(data.number); // Update current page from API response
+      setTotalPages(data.totalPages); // Update total pages from API response
+    } catch (err) {
+      console.error("Бүтээгдэхүүн татах үед алдаа гарлаа:", err);
+      setError("Бүтээгдэхүүн татах үед алдаа гарлаа. Сүлжээгээ шалгана уу.");
+      showAlert("Бүтээгдэхүүн татах үед алдаа гарлаа. Сүлжээгээ шалгана уу.");
+    } finally {
+      setLoading(false);
+    }
+  }, [showAlert]);
+
+  // Handle page change function
+  const handlePageChange = (newPage) => {
+    // Only fetch if the new page is within the valid range
+    if (newPage >= 0 && newPage < totalPages) {
+      fetchProducts(newPage);
+    }
+  };
+
+  // A new effect to handle the initial load and re-fetch when search is cleared.
+  useEffect(() => {
+    // Only fetch products if the search bar is empty
+    if (!searchBarcode) {
+      fetchProducts();
+    }
+  }, [fetchProducts, searchBarcode]);
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    if (name === "categoryID" || name === "measureUnitID") {
+      setCurrentProduct((prev) => ({
+        ...prev,
+        [name]: { id: value === "" ? "" : Number(value) },
+      }));
+    } else if (type === "checkbox") {
+      setCurrentProduct((prev) => ({
+        ...prev, [name]: checked,
+      }));
+    } else if (type === "number") {
+      setCurrentProduct((prev) => ({
+        ...prev, [name]: value === "" ? "" : Number(value),
+      }));
+    } else {
+      setCurrentProduct((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentProduct.name || !currentProduct.barcode || !currentProduct.price ||
+      !currentProduct.categoryID.id || !currentProduct.measureUnitID.id) {
+      showAlert("Нэр, Баркод, Үнэ, Категори ID, болон Хэмжих Нэгж ID талбаруудыг бөглөнө үү.");
+      return;
+    }
+
+    setLoading(true); setError(null);
+    const method = editingIndex !== null ? "PUT" : "POST";
+    const url = editingIndex !== null ? `${API_BASE}/${products[editingIndex].id}` : API_BASE;
+
+    try {
+      const response = await fetch(url, {
+        method, headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(currentProduct),
+      });
+
+      if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+
+      showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
+      setFormVisible(false);
+      setCurrentProduct({
+        name: "", shortName: "", barcode: "", price: "",
+        categoryID: { id: "" }, allowCityTax: false,
+        measureUnitID: { id: "" }, customCode: "", imagePath: "",
+        packageCount: 1, mainCategoryCode: "", isVATFree: false,
+      });
+      setEditingIndex(null);
+      // After save, refresh the current page to see the new/updated product
+      fetchProducts(currentPage);
+    } catch (err) {
+      console.error("Хадгалах үед алдаа гарлаа:", err);
+      setError("Хадгалах үед алдаа гарлаа. Талбаруудыг шалгана уу.");
+      showAlert("Хадгалах үед алдаа гарлаа.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEdit = (index) => {
+    const productToEdit = products[index];
+    setCurrentProduct({
+      ...productToEdit,
+      categoryID: productToEdit.categoryID || { id: "" },
+      measureUnitID: productToEdit.measureUnitID || { id: "" },
+      allowCityTax: productToEdit.allowCityTax ?? false,
+      isVATFree: productToEdit.isVATFree ?? false,
+      price: productToEdit.price ?? "",
+      packageCount: productToEdit.packageCount ?? "",
+    });
+    setEditingIndex(index);
+    setFormVisible(true);
+  };
+
+  const handleDelete = (index) => {
+    showConfirm("Та энэ бүтээгдэхүүнийг устгахдаа итгэлтэй байна уу?", async () => {
+      setLoading(true); setError(null);
+      const productId = products[index].id;
+      try {
+        const response = await fetch(`${API_BASE}/${productId}`, { method: "DELETE" });
+
+        if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+
+        showAlert("Амжилттай устгалаа.");
+        // After deleting, refresh the current page
+        fetchProducts(currentPage);
+      } catch (err) {
+        console.error("Устгах үед алдаа гарлаа:", err);
+        setError("Устгах үед алдаа гарлаа.");
+        showAlert("Устгах үед алдаа гарлаа.");
+      } finally {
+        setLoading(false);
+      }
+    });
+  };
+
+  const handleSearchBarcodeChange = (e) => setSearchBarcode(e.target.value);
+
+  // This function now searches the entire dataset by fetching a large number of products,
+  // then filters the results locally.
+  const handleSearchSubmit = async () => {
+    // If the search bar is empty, we just refresh the current page of products
+    if (!searchBarcode) {
+      fetchProducts(0);
+      return;
+    }
+    
+    setLoading(true); setError(null);
+    try {
+      // Fetch a large number of products for local filtering.
+      // NOTE: A more scalable solution would be to implement a search endpoint on the backend.
+      const response = await fetch(`${API_BASE}?page=0&size=1000`); 
+      if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+      const data = await response.json();
+      const allProducts = data.content;
+
+      // Filter the products based on the barcode from the search input
+      const filtered = allProducts.filter(product => product.barcode === searchBarcode);
+      
+      setProducts(filtered);
+      // When we're showing filtered results, we disable pagination
+      setTotalPages(1); 
+      setCurrentPage(0); 
+    } catch (err) {
+      console.error("Хайлт хийх үед алдаа гарлаа:", err);
+      setError("Хайлт хийх үед алдаа гарлаа.");
+      showAlert("Хайлт хийх үед алдаа гарлаа.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // This function is now responsible for setting the barcode and triggering the search
+  const handleBarcodeScanSuccess = (barcode) => {
+    // Close the scanner modal
+    setBarcodeScannerVisible(false);
+    // Update the search barcode input with the scanned value
+    setSearchBarcode(barcode);
+    // Immediately perform a search with the scanned barcode
+    handleSearchSubmit();
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 sm:p-6 font-sans antialiased">
+      <style>
+        {`
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          body {
+            font-family: 'Inter', sans-serif;
+          }
+          .input-field {
+            border-radius: 0.375rem;
+            padding: 0.5rem 1rem;
+            width: 100%;
+            border: 2px solid #D1D5DB;
+            transition: all 0.2s ease-in-out;
+          }
+          .input-field:focus {
+            outline: none;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+          }
+        `}
+      </style>
+
+      <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Бүтээгдэхүүн удирдах</h1>
+
+      {loading && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="flex items-center space-x-2 text-white text-lg">
+            <svg className="animate-spin h-6 w-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Уншиж байна...</span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col md:flex-row md:items-center gap-3 mb-6 p-4 bg-white shadow-md rounded-lg">
+        <input
+          type="text"
+          placeholder="Баркод оруулна уу..."
+          value={searchBarcode}
+          onChange={handleSearchBarcodeChange}
+          className="input-field flex-grow"
+        />
+        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+          <button
+            onClick={handleSearchSubmit}
+            className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-md w-full sm:w-auto"
+          >
+            Хайх
+          </button>
+          <button
+            onClick={() => {
+              setSearchBarcode(""); // Clear search bar
+              // The useEffect hook will now trigger a re-fetch of the first page
+            }}
+            className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md w-full sm:w-auto"
+          >
+            Бүх бүтээгдэхүүн
+          </button>
+          <button
+            onClick={() => setBarcodeScannerVisible(true)}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md w-full sm:w-auto"
+          >
+            Сканнер асаах
+          </button>
+        </div>
+      </div>
+
+      <button
+        onClick={() => {
+          setFormVisible(!formVisible);
+          setEditingIndex(null);
+          setCurrentProduct({
+            name: "", shortName: "", barcode: "", price: "",
+            categoryID: { id: "" }, allowCityTax: false,
+            measureUnitID: { id: "" }, customCode: "", imagePath: "",
+            packageCount: 1, mainCategoryCode: "", isVATFree: false,
+          });
+        }}
+        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mb-6 shadow-md transition-colors"
+      >
+        {formVisible ? "Хаах" : "Бүтээгдэхүүн нэмэх"}
+      </button>
+
+      {formVisible && (
+        <div className="bg-white shadow-md rounded-lg p-6 space-y-4 mb-6">
+          <h2 className="text-2xl font-semibold text-gray-800">
+            {editingIndex !== null ? "Бүтээгдэхүүн засах" : "Шинэ бүтээгдэхүүн нэмэх"}
+          </h2>
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Нэр:</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={currentProduct.name}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="shortName" className="block text-sm font-medium text-gray-700 mb-1">Богино Нэр:</label>
+            <input
+              type="text"
+              id="shortName"
+              name="shortName"
+              value={currentProduct.shortName}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="barcode" className="block text-sm font-medium text-gray-700 mb-1">Баркод:</label>
+            <input
+              type="text"
+              id="barcode"
+              name="barcode"
+              value={currentProduct.barcode}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Үнэ:</label>
+            <input
+              type="number"
+              id="price"
+              name="price"
+              value={currentProduct.price}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="categoryID" className="block text-sm font-medium text-gray-700 mb-1">Категори ID:</label>
+            <input
+              type="number"
+              id="categoryID"
+              name="categoryID"
+              value={currentProduct.categoryID.id}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="measureUnitID" className="block text-sm font-medium text-gray-700 mb-1">Хэмжих Нэгж ID:</label>
+            <input
+              type="number"
+              id="measureUnitID"
+              name="measureUnitID"
+              value={currentProduct.measureUnitID.id}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="allowCityTax"
+              name="allowCityTax"
+              checked={currentProduct.allowCityTax}
+              onChange={handleChange}
+              className="form-checkbox h-5 w-5 text-blue-600 rounded"
+            />
+            <label htmlFor="allowCityTax" className="text-sm font-medium text-gray-700">Хотын Татвар зөвшөөрөх</label>
+          </div>
+          <div>
+            <label htmlFor="customCode" className="block text-sm font-medium text-gray-700 mb-1">Захиалгат Код:</label>
+            <input
+              type="text"
+              id="customCode"
+              name="customCode"
+              value={currentProduct.customCode}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="imagePath" className="block text-sm font-medium text-gray-700 mb-1">Зургийн Зам:</label>
+            <input
+              type="text"
+              id="imagePath"
+              name="imagePath"
+              value={currentProduct.imagePath}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="packageCount" className="block text-sm font-medium text-gray-700 mb-1">Багцын Тоо:</label>
+            <input
+              type="number"
+              id="packageCount"
+              name="packageCount"
+              value={currentProduct.packageCount}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div>
+            <label htmlFor="mainCategoryCode" className="block text-sm font-medium text-gray-700 mb-1">Үндсэн Категори Код:</label>
+            <input
+              type="text"
+              id="mainCategoryCode"
+              name="mainCategoryCode"
+              value={currentProduct.mainCategoryCode}
+              onChange={handleChange}
+              className="input-field"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="isVATFree"
+              name="isVATFree"
+              checked={currentProduct.isVATFree}
+              onChange={handleChange}
+              className="form-checkbox h-5 w-5 text-blue-600 rounded"
+            />
+            <label htmlFor="isVATFree" className="text-sm font-medium text-gray-700">НӨАТгүй</label>
+          </div>
+          <button
+            onClick={handleSave}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md shadow-md transition-colors"
+          >
+            Хадгалах
+          </button>
+        </div>
+      )}
+
+      <AdminProductTable
+        products={products}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={handlePageChange}
+      />
+
+      <Modal
+        isOpen={barcodeScannerVisible}
+        title="Баркод сканнер"
+        onClose={() => setBarcodeScannerVisible(false)}
+        type="alert"
+      >
+        <BarcodeScanner
+          onScanSuccess={handleBarcodeScanSuccess}
+          onClose={() => setBarcodeScannerVisible(false)}
+          showAlert={showAlert}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={modal.isOpen}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+        onConfirm={modal.onConfirm}
+        onCancel={modal.onCancel}
+        onClose={modal.onClose}
+      />
+    </div>
+  );
+};
 
 export default ProductAdmin;

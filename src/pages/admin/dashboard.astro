@@ -1,0 +1,100 @@
+---
+// src/pages/admin/dashboard.astro
+import AdminLayout from '../../layouts/AdminLayout.astro';
+
+// --- API Data Fetching Logic ---
+// We use a try/catch block to handle any potential network or API errors gracefully.
+let totalProductsCount = 0;
+let totalUsersCount = 0;
+let error = null;
+
+try {
+    // Fetch products data to get the total count.
+    // We assume the API returns a paginated object with 'totalElements'.
+    const productsResponse = await fetch('http://localhost:8080/api/product');
+    if (!productsResponse.ok) {
+        throw new Error('Failed to fetch products.');
+    }
+    const productsData = await productsResponse.json();
+    // Correctly get the total number of elements from the API response
+    totalProductsCount = productsData.totalElements || productsData.content.length;
+
+    // Fetch users data to get the total count.
+    // We assume the API returns a paginated object with 'totalElements'.
+    const usersResponse = await fetch('http://localhost:8080/api/admin/user');
+    if (!usersResponse.ok) {
+        throw new Error('Failed to fetch users.');
+    }
+    const usersData = await usersResponse.json();
+    // Correctly get the total number of elements from the API response
+    totalUsersCount = usersData.totalElements || usersData.content.length;
+
+} catch (e) {
+    console.error("API дуудахад алдаа гарлаа:", e);
+    error = "Мэдээлэл татаж чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.";
+}
+---
+
+<AdminLayout title="Админ Панел | Хяналтын самбар">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Dashboard Header */}
+        <h1 class="text-3xl font-bold text-gray-800 mb-6">Хяналтын самбар</h1>
+        <p class="text-gray-600 mb-8 text-lg">
+            Тавтай морилно уу, Админ! Энд таны дэлгүүрийн ерөнхий мэдээллийг харах боломжтой.
+        </p>
+
+        {/* Display error message if fetching fails */}
+        {error && (
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
+                <strong class="font-bold">Алдаа!</strong>
+                <span class="block sm:inline"> {error}</span>
+            </div>
+        )}
+
+        {/* Summary Cards Section */}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            {/* Card 1: Total Products */}
+            <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between transition-transform transform hover:scale-105 hover:shadow-2xl">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700">Нийт бүтээгдэхүүн</h3>
+                    <p class="text-4xl font-extrabold text-[#003375] mt-2">{totalProductsCount}</p>
+                </div>
+                <div class="p-3 bg-blue-100 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[#003375]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                    </svg>
+                </div>
+            </div>
+
+            {/* Card 2: Total Users */}
+            <div class="bg-white rounded-xl shadow-lg p-6 flex items-center justify-between transition-transform transform hover:scale-105 hover:shadow-2xl">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700">Нийт хэрэглэгч</h3>
+                    <p class="text-4xl font-extrabold text-[#f7941e] mt-2">{totalUsersCount}</p>
+                </div>
+                <div class="p-3 bg-orange-100 rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-[#f7941e]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" fill="none"/>
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 20c0-3.314 3.134-6 8-6s8 2.686 8 6"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        {/* Quick Links Section */}
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-10">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Хурдан холбоосууд</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <a href="/admin/products" class="flex items-center justify-center p-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shadow-sm hover:shadow-md">
+                    <span class="text-lg font-medium">Бүтээгдэхүүн удирдах</span>
+                </a>
+                <a href="/admin/categories" class="flex items-center justify-center p-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shadow-sm hover:shadow-md">
+                    <span class="text-lg font-medium">Ангилал удирдах</span>
+                </a>
+                <a href="/admin/users" class="flex items-center justify-center p-4 bg-gray-50 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shadow-sm hover:shadow-md">
+                    <span class="text-lg font-medium">Хэрэглэгч удирдах</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</AdminLayout>

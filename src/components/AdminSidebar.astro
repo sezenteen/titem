@@ -1,36 +1,114 @@
+---
+// No frontmatter imports needed for this simple component
+---
 
-<!-- Sidebar Toggle Button -->
-<button id="sidebarToggle" class="absolute top-4 right-4 bg-[#F7941E] text-white px-3 py-2 rounded-md shadow-lg z-50 md:hidden" style="font-family: Optima, sans-serif;">
-    ☰ Меню
-</button>
+<!-- Admin Sidebar Component -->
+<aside
+  id="sidebar"
+  class="w-64 bg-[#003375] text-white flex-shrink-0 shadow-lg relative z-20 overflow-y-auto
+         transform -translate-x-full md:translate-x-0 transition-transform duration-300"
+>
+  <nav class="flex flex-col h-full">
+    <!-- Sidebar Toggle Button (for mobile) -->
+    <button
+      id="sidebarToggle"
+      class="absolute top-4 right-4 bg-[#F7941E] text-white p-2 rounded-full shadow-lg z-50 md:hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#F7941E]"
+      aria-label="Toggle sidebar menu"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          d="M4 6h16M4 12h16M4 18h16"
+        />
+      </svg>
+    </button>
 
-<aside id="sidebar" class="w-full md:w-64 bg-gradient-to-b from-[#003375] to-[#F7941E] h-screen fixed md:relative md:sticky md:top-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto shadow-lg md:overflow-hidden z-40" style="font-family: Optima, sans-serif;">
-    <nav class="flex flex-col h-full">
-        <!-- Logo Section -->
-        <div class="flex items-center justify-center p-6 md:p-8">
-            <img src="../img/titem_white.png" alt="Титэм Плаза" class="h-16 md:h-24 w-auto">
-        </div>
+    <!-- Logo Section -->
+    <div class="flex items-center justify-center p-6 md:p-8 border-b border-white border-opacity-20">
+      <a href="/"><img src="../img/titem_white.png" alt="Титэм Плаза" class="h-16 w-auto" /></a>
+    </div>
 
-        <!-- Navigation Menu -->
-        <ul class="flex flex-col flex-grow space-y-2 p-4">
-            <li>
-                <a href="#" class="block text-white text-lg md:text-base px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#FFAA00] hover:text-white text-center" style="font-family: Optima, sans-serif;">Удирдлага</a>
-            </li>
+    <!-- Navigation Menu -->
+    <ul class="flex flex-col flex-grow space-y-2 p-4">
+      <li>
+        <a
+          href="/admin/dashboard"
+          class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#F7941E] hover:text-white group"
+          aria-current="page"
+        >
+          <img src="../img/home.png" alt="home icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <span>Удирдлага</span>
+        </a>
+      </li>
+      <li>
+        <a
+          href="/admin/products"
+          class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#F7941E] hover:text-white group"
+        >
+          <img src="../img/prod.png" alt="product icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <span>Бүтээгдэхүүн</span>
+        </a>
+      </li>
+      <li>
+        <a
+          href="/admin/categories"
+          class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#F7941E] hover:text-white group"
+        >
+          <img src="../img/category.png" alt="category icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <span>Ангилал</span>
+        </a>
+      </li>
+      <li>
+        <a
+          href="/admin/users"
+          class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#F7941E] hover:text-white group"
+        >
+          <img src="../img/user.png" alt="user icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <span>Хэрэглэгч</span>
+        </a>
+      </li>
+      <!-- <li>
+        <a
+          href="/admin/settings"
+          class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md transition-all duration-300 hover:bg-[#F7941E] hover:text-white group"
+        >
+          <img src="../img/settings.png" alt="settings icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+          <span>Тохиргоо</span>
+        </a>
+      </li> -->
+    </ul>
 
-        </ul>
-    </nav>
+    <!-- Logout Button (optional, can be moved to header) -->
+    <div class="mt-auto p-4 border-t border-white border-opacity-20">
+      <button
+        class="flex items-center space-x-3 text-white text-lg px-4 py-2 rounded-md w-full transition-all duration-300 hover:bg-red-600 hover:text-white group"
+      >
+        <img src="../img/exit.png" alt="logout icon" class="h-6 w-6 group-hover:scale-110 transition-transform" />
+        <span>Гарах</span>
+      </button>
+    </div>
+  </nav>
 </aside>
 
 <!-- Sidebar Toggle Script -->
 <script>
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
+  document.addEventListener("DOMContentLoaded", () => {
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    const sidebar = document.getElementById("sidebar");
 
     if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.toggle('-translate-x-full');
-            sidebar.classList.toggle('translate-x-0');
-        });
+      sidebarToggle.addEventListener("click", () => {
+        sidebar.classList.toggle("-translate-x-full");
+        sidebar.classList.toggle("translate-x-0");
+      });
     }
-</script>
+  });
 </script>
