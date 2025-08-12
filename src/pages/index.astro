@@ -25,26 +25,39 @@ try {
     error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
 }
 
-// Separate a few products for the horizontal scroll section
+// Display all fetched products in the main grid
+const mainProducts = products;
+// Use a slice of the fetched products for the horizontal scroll.
+// Note: This means the scrolling products will change with each page.
+// For a static "Gift Items" section, you would need a separate API call.
 const scrollingProducts = products.slice(0, 8);
 
 function getPageUrl(p) {
-    return `/?page=${p}`;
+    // Ensure the page number is valid
+    const validPage = Math.max(1, Math.min(p, totalPages));
+    return `/?page=${validPage}`;
 }
 
-// Create pagination range with ellipsis
-const pageRange = 2;
+// Create pagination range with ellipsis - simplified and more robust logic
+const pageRange = 2; // Number of pages to show around the current page
 const pages = [];
 if (totalPages > 1) {
-    if (page > pageRange + 1) {
+    const start = Math.max(1, page - pageRange);
+    const end = Math.min(totalPages, page + pageRange);
+
+    if (start > 1) {
         pages.push(1);
-        pages.push("...");
+        if (start > 2) {
+            pages.push("...");
+        }
     }
-    for (let i = Math.max(1, page - pageRange); i <= Math.min(totalPages, page + pageRange); i++) {
+
+    for (let i = start; i <= end; i++) {
         pages.push(i);
     }
-    if (page < totalPages - pageRange) {
-        if (page < totalPages - pageRange - 1) {
+
+    if (end < totalPages) {
+        if (end < totalPages - 1) {
             pages.push("...");
         }
         pages.push(totalPages);
@@ -53,7 +66,7 @@ if (totalPages > 1) {
 ---
 
 <BaseLayout title="Нүүр хуудас">
-    <div class="px-[3%] py-3 2xl:px-[8%]">
+    <main class="px-[3%] py-3 2xl:px-[8%]">
 
         <!-- Main Carousel Section -->
         <!-- ... your carousel code stays unchanged ... -->
@@ -90,10 +103,10 @@ if (totalPages > 1) {
                 <div class="text-center py-12">
                     <p class="text-xl text-red-600">{error}</p>
                 </div>
-            ) : products.length > 0 ? (
+            ) : mainProducts.length > 0 ? (
                 <>
                     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        {products.map((product: any) => (
+                        {mainProducts.map((product: any) => (
                             <ProductCard product={product} />
                         ))}
                     </div>
@@ -129,7 +142,7 @@ if (totalPages > 1) {
                 </div>
             )}
         </div>
-    </div>
+    </main>
 </BaseLayout>
 
 <style>
