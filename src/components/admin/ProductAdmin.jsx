@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from 'react-dom';
-import Quagga from "quagga";
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 
 // A mock component for AdminProductTable.
 // This displays the list of products in a responsive table format.
@@ -98,17 +98,21 @@ const AdminProductTable = ({ products, onEdit, onDelete, currentPage, totalPages
                     >
                         Өмнөх
                     </button>
-                    {getPageNumbers().map(page => (
-                        <button
-                            key={page}
-                            onClick={() => onPageChange(page)}
-                            className={`px-4 py-2 border rounded-md transition-colors ${currentPage === page
-                                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-                                : "bg-white text-gray-700 hover:bg-gray-200"
-                                }`}
-                        >
-                            {page + 1}
-                        </button>
+                    {getPageNumbers().map((page, idx) => (
+                        typeof page === 'number' ? (
+                            <button
+                                key={page}
+                                onClick={() => onPageChange(page)}
+                                className={`px-4 py-2 border rounded-md transition-colors ${currentPage === page
+                                    ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                    : "bg-white text-gray-700 hover:bg-gray-200"
+                                    }`}
+                            >
+                                {page + 1}
+                            </button>
+                        ) : (
+                            <span key={`ellipsis-${idx}`} className="px-2 text-gray-500 select-none">...</span>
+                        )
                     ))}
                     <button
                         onClick={() => onPageChange(currentPage + 1)}
@@ -124,65 +128,68 @@ const AdminProductTable = ({ products, onEdit, onDelete, currentPage, totalPages
 };
 
 
-// BarcodeScanner component using camera for barcode scanning with Quagga
+// BarcodeScanner component using html5-qrcode for barcode/QR scanning
 const BarcodeScanner = ({ onScanSuccess, onClose, showAlert }) => {
     const scannerRef = useRef(null);
+    const containerId = 'qr-reader';
 
     useEffect(() => {
-        if (!scannerRef.current) return;
-
-        Quagga.init(
-            {
-                inputStream: {
-                    type: "LiveStream",
-                    target: scannerRef.current,
-                    constraints: {
-                        facingMode: "environment", // Use the back camera on mobile devices
-                    },
+        try {
+            scannerRef.current = new Html5QrcodeScanner(
+                containerId,
+                {
+                    fps: 10,
+                    qrbox: { width: 300, height: 300 },
+                    rememberLastUsedCamera: true,
+                    formatsToSupport: [
+                        Html5QrcodeSupportedFormats.QR_CODE,
+                        Html5QrcodeSupportedFormats.EAN_13,
+                        Html5QrcodeSupportedFormats.EAN_8,
+                        Html5QrcodeSupportedFormats.UPC_A,
+                        Html5QrcodeSupportedFormats.UPC_E,
+                        Html5QrcodeSupportedFormats.CODE_128,
+                    ],
                 },
-                decoder: {
-                    readers: ["ean_reader", "ean_8_reader", "code_128_reader", "upc_reader", "upc_e_reader"],
-                },
-                locate: true, // Enable detection of the barcode's location
-            },
-            (err) => {
-                if (err) {
-                    showAlert("Камер эхлүүлэхэд алдаа гарлаа: " + err.message);
-                    onClose(); // Close the modal on error
-                    return;
-                }
-                Quagga.start();
-            }
-        );
+                false
+            );
 
-        // Event listener for when a barcode is detected
-        Quagga.onDetected((data) => {
-            if (data && data.codeResult && data.codeResult.code) {
-                Quagga.stop(); // Stop the scanner immediately
-                onScanSuccess(data.codeResult.code); // Call the success handler
-            }
-        });
+            const onSuccess = (decodedText) => {
+                // Stop scanner and report success
+                scannerRef.current?.clear().catch(() => {});
+                onScanSuccess(decodedText);
+            };
 
-        // Cleanup function to stop Quagga when the component unmounts
+            const onError = () => {
+                // ignore continuous scan errors
+            };
+
+            scannerRef.current.render(onSuccess, onError);
+        } catch (err) {
+            showAlert("Камер эхлүүлэхэд алдаа гарлаа: " + (err?.message || err));
+            onClose();
+        }
+
         return () => {
-            Quagga.offDetected();
-            Quagga.stop();
+            if (scannerRef.current) {
+                scannerRef.current.clear().catch(() => {});
+            }
         };
-        // eslint-disable-next-line
     }, [onScanSuccess, onClose, showAlert]);
 
     return (
         <div className="flex flex-col items-center justify-center p-4">
-            <p className="text-gray-700 mb-4">Камер ашиглан баркод уншуулах.</p>
-            {/* The container for the video stream. We use Tailwind for responsive styling. */}
+            <p className="text-gray-700 mb-4">Камер ашиглан баркод/QR уншуулах.</p>
             <div
-                ref={scannerRef}
+                id={containerId}
                 className="w-full max-w-sm aspect-video rounded-lg overflow-hidden bg-black mb-4 border-2 border-gray-300"
             />
             <button
                 onClick={() => {
-                    Quagga.stop();
-                    onClose();
+                    if (scannerRef.current) {
+                        scannerRef.current.clear().finally(() => onClose());
+                    } else {
+                        onClose();
+                    }
                 }}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md transition-colors"
             >
@@ -404,31 +411,44 @@ const ProductAdmin = () => {
 
     const handleSearchBarcodeChange = (e) => setSearchBarcode(e.target.value);
 
-    // This function now searches the entire dataset by fetching a large number of products,
-    // then filters the results locally.
-    const handleSearchSubmit = async () => {
-        // If the search bar is empty, we just refresh the current page of products
-        if (!searchBarcode) {
+    // Search over all pages to ensure barcodes from the last page are found
+    const handleSearchSubmit = async (barcodeInput) => {
+        const query = (barcodeInput ?? searchBarcode)?.trim();
+        if (!query) {
             fetchProducts(0);
             return;
         }
 
         setLoading(true); setError(null);
         try {
-            // Fetch a large number of products for local filtering.
-            // NOTE: A more scalable solution would be to implement a search endpoint on the backend.
-            const response = await fetch(`${API_BASE}?page=0&size=1000`);
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
-            const data = await response.json();
-            const allProducts = data.content;
+            const PAGE_SIZE_FOR_SEARCH = 1000;
+            let page = 0;
+            let totalPagesLocal = 1;
+            const matches = [];
 
-            // Filter the products based on the barcode from the search input
-            const filtered = allProducts.filter(product => product.barcode === searchBarcode);
+            do {
+                const response = await fetch(`${API_BASE}?page=${page}&size=${PAGE_SIZE_FOR_SEARCH}`);
+                if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+                const data = await response.json();
+                totalPagesLocal = data.totalPages ?? 1;
 
-            setProducts(filtered);
-            // When we're showing filtered results, we disable pagination
+                const pageContent = Array.isArray(data.content) ? data.content : [];
+                const pageMatches = pageContent.filter(product => product.barcode === query);
+                if (pageMatches.length > 0) {
+                    matches.push(...pageMatches);
+                    // Assuming barcode is unique, stop early
+                    break;
+                }
+                page += 1;
+            } while (page < totalPagesLocal);
+
+            setProducts(matches);
             setTotalPages(1);
             setCurrentPage(0);
+
+            if (matches.length === 0) {
+                showAlert("Хайсан баркодтой бүтээгдэхүүн олдсонгүй.");
+            }
         } catch (err) {
             console.error("Хайлт хийх үед алдаа гарлаа:", err);
             setError("Хайлт хийх үед алдаа гарлаа.");
@@ -442,7 +462,7 @@ const ProductAdmin = () => {
     const handleBarcodeScanSuccess = (barcode) => {
         setBarcodeScannerVisible(false);
         setSearchBarcode(barcode);
-        handleSearchSubmit();
+        handleSearchSubmit(barcode);
     };
 
 
@@ -493,7 +513,7 @@ const ProductAdmin = () => {
                 />
                 <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
                     <button
-                        onClick={handleSearchSubmit}
+                        onClick={() => handleSearchSubmit()}
                         className="bg-blue-600 hover:bg-blue-700 transition-colors text-white px-4 py-2 rounded-md w-full sm:w-auto"
                     >
                         Хайх
