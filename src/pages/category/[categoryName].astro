@@ -30,30 +30,7 @@ const PAGE_SIZE = 12;
 const url = new URL(Astro.request.url);
 const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
 
-let products: any[] = [];
-let totalProducts = 0;
-let totalPages = 0;
-
-try {
-    // Backend pagination: page is 0-indexed in Spring
-    const productsResponse = await fetch(
-        `http://localhost:8080/api/product/cat/${categoryId}?page=${page - 1}&size=${PAGE_SIZE}`
-    );
-
-    if (!productsResponse.ok) throw new Error(`HTTP error! status: ${productsResponse.status}`);
-
-    const data = await productsResponse.json();
-
-    // Spring Data returns { content, totalElements, totalPages, ... }
-    products = data.content.filter((product: any) => product && product.imagePath);
-    totalProducts = data.totalElements;
-    totalPages = data.totalPages;
-} catch (error) {
-    console.error(`Error fetching paginated products for category ${categoryName}:`, error);
-    products = [];
-}
-
-// Fetch categories for sidebar
+// Fetch categories first to resolve id from slug at runtime
 let sidebarCategories: Array<{ id: number; name: string }> = [];
 try {
     const cRes = await fetch('http://localhost:8080/api/category');
@@ -62,6 +39,38 @@ try {
     }
 } catch (e) {
     console.error("Error fetching categories for sidebar:", e);
+}
+
+// Resolve category id/title from slug if needed
+let resolvedCategoryId: number | undefined = categoryId;
+let resolvedCategoryTitle: string | undefined = categoryTitle;
+if (!resolvedCategoryId && sidebarCategories.length > 0) {
+    const match = sidebarCategories.find((c) => slugify(c.name) === categoryName);
+    if (match) {
+        resolvedCategoryId = match.id;
+        resolvedCategoryTitle = match.name;
+    }
+}
+
+// Fetch products by resolved id
+let products: any[] = [];
+let totalProducts = 0;
+let totalPages = 0;
+
+try {
+    if (resolvedCategoryId) {
+        const productsResponse = await fetch(
+            `http://localhost:8080/api/product/cat/${resolvedCategoryId}?page=${page - 1}&size=${PAGE_SIZE}`
+        );
+        if (!productsResponse.ok) throw new Error(`HTTP error! status: ${productsResponse.status}`);
+        const data = await productsResponse.json();
+        products = (data.content || []).filter((product: any) => product);
+        totalProducts = data.totalElements || 0;
+        totalPages = data.totalPages || 0;
+    }
+} catch (error) {
+    console.error(`Error fetching paginated products for category ${categoryName}:`, error);
+    products = [];
 }
 
 function getPageUrl(p: number) {
@@ -89,10 +98,10 @@ if (totalPages > 1) {
 }
 ---
 
-<BaseLayout title={categoryTitle ? `${categoryTitle} Ангилал` : `Ангилал`}>
+<BaseLayout title={resolvedCategoryTitle ? `${resolvedCategoryTitle} Ангилал` : `Ангилал`}>
     <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex items-center justify-between mb-4 lg:mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || 'Ангилал'}</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{resolvedCategoryTitle || 'Ангилал'}</h1>
             <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
                 Ангилал
@@ -109,7 +118,7 @@ if (totalPages > 1) {
                             sidebarCategories.map((cat) => (
                                 <a
                                     href={`/category/${slugify(cat.name)}`}
-                                    class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+                                    class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
                                 >
                                     {cat.name}
                                 </a>
@@ -135,7 +144,7 @@ if (totalPages > 1) {
                                 sidebarCategories.map((cat) => (
                                     <a
                                         href={`/category/${slugify(cat.name)}`}
-                                        class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
+                                        class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
                                         @click="open=false"
                                     >
                                         {cat.name}
@@ -158,7 +167,7 @@ if (totalPages > 1) {
                             <span class="mx-2">/</span>
                         </li>
                         <li class="flex items-center">
-                            <span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span>
+                            <span class="font-semibold text-gray-800">{resolvedCategoryTitle || 'Ангилал'}</span>
                         </li>
                     </ol>
                 </nav>
@@ -169,40 +178,40 @@ if (totalPages > 1) {
                             {products.map((product: any) => (
                                 <ProductCard product={{
                                   ...product,
-                                  categoryName: categoryTitle,
-                                  categoryId: product?.categoryID?.id ?? undefined
+                                  categoryName: resolvedCategoryTitle,
+                                  categoryId: product?.categoryID?.id ?? resolvedCategoryId
                                 }} />
                             ))}
                         </div>
 
                         {totalPages > 1 && (
                             <div class="flex justify-center mt-8 space-x-2">
-                                                        <a
-                            href={getPageUrl(page - 1)}
-                            class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                        >
-                            Өмнөх
-                        </a>
-
-                        {pages.map(p => (
-                            p === "..." ? (
-                                <span class="px-3 py-1 text-gray-500">...</span>
-                            ) : (
                                 <a
-                                    href={getPageUrl(p)}
-                                    class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}
+                                    href={getPageUrl(page - 1)}
+                                    class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
                                 >
-                                    {p}
+                                    Өмнөх
                                 </a>
-                            )
-                        ))}
 
-                        <a
-                            href={getPageUrl(page + 1)}
-                            class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                        >
-                            Дараах
-                        </a>
+                                {pages.map(p => (
+                                    p === "..." ? (
+                                        <span class="px-3 py-1 text-gray-500">...</span>
+                                    ) : (
+                                        <a
+                                            href={getPageUrl(p)}
+                                            class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}
+                                        >
+                                            {p}
+                                        </a>
+                                    )
+                                ))}
+
+                                <a
+                                    href={getPageUrl(page + 1)}
+                                    class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    Дараах
+                                </a>
                             </div>
                         )}
                     </>
