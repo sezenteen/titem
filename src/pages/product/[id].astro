@@ -1,0 +1,136 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ProductCard from '../../components/ProductCard.astro';
+
+const API_BASE = 'http://localhost:8080/api';
+
+// Try to pre-generate some product pages (optional, safe fallback)
+export async function getStaticPaths() {
+  try {
+    const res = await fetch(`${API_BASE}/product?page=0&size=20`);
+    if (!res.ok) throw new Error('Failed to fetch products');
+    const data = await res.json();
+    const items = Array.isArray(data.content) ? data.content : [];
+    return items.map((p: any) => ({ params: { id: String(p.id) } }));
+  } catch (e) {
+    console.error('getStaticPaths(products) error:', e);
+    return [];
+  }
+}
+
+const { id } = Astro.params;
+
+// Fetch product detail
+let product: any = null;
+let error: string | null = null;
+try {
+  const res = await fetch(`${API_BASE}/product/${id}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  product = await res.json();
+} catch (e) {
+  console.error('Failed to load product:', e);
+  error = 'Бүтээгдэхүүний мэдээлэл татаж чадсангүй.';
+}
+
+// Fetch categories to derive category name
+let categories: Array<{ id: number; name: string }> = [];
+try {
+  const cres = await fetch(`${API_BASE}/category`);
+  if (cres.ok) categories = await cres.json();
+} catch {}
+
+function getCategoryNameById(cid?: number) {
+  if (!cid) return '';
+  const c = categories.find((x) => x.id === cid);
+  return c?.name || '';
+}
+
+function slugify(name: string) {
+  return encodeURIComponent(String(name || '').trim().toLowerCase().replace(/\s+/g, '-'));
+}
+
+// Related products (same category)
+let related: any[] = [];
+try {
+  if (product?.categoryID?.id) {
+    const rres = await fetch(`${API_BASE}/product/cat/${product.categoryID.id}?page=0&size=8`);
+    if (rres.ok) {
+      const rdata = await rres.json();
+      related = Array.isArray(rdata.content) ? rdata.content.filter((p: any) => p && p.id !== product.id) : [];
+    }
+  }
+} catch {}
+---
+
+<BaseLayout title={product?.name ? `${product.name} | Бүтээгдэхүүн` : 'Бүтээгдэхүүн'}>
+  <section class="max-w-7xl mx-auto px-6 lg:px-8 py-8">
+    {error ? (
+      <div class="text-center py-16">
+        <p class="text-red-600">{error}</p>
+        <a href="/products" class="mt-4 inline-block px-4 py-2 rounded bg-gray-900 text-white">Бүтээгдэхүүнүүд рүү буцах</a>
+      </div>
+    ) : product ? (
+      <>
+        <nav class="mb-6 text-sm text-gray-600" aria-label="Breadcrumb">
+          <ol class="list-none p-0 inline-flex">
+            <li class="flex items-center"><a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a><span class="mx-2">/</span></li>
+            <li class="flex items-center"><a href="/products" class="hover:text-[#f7941e]">Бүтээгдэхүүн</a><span class="mx-2">/</span></li>
+            <li class="flex items-center"><span class="font-semibold text-gray-800">{product.name}</span></li>
+          </ol>
+        </nav>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <div class="bg-white rounded-xl shadow overflow-hidden">
+            <img src={product.imagePath || 'https://placehold.co/800x600/E5E7EB/6B7280?text=No+Image'} alt={product.name} class="w-full h-80 object-cover" />
+          </div>
+
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{product.name}</h1>
+            {product.shortName && <p class="text-gray-600 mt-1">{product.shortName}</p>}
+
+            <div class="mt-4 space-y-2 text-gray-800">
+              {product.price !== undefined && <p class="text-xl font-semibold">Үнэ: {product.price} ₮</p>}
+              {product.barcode && <p>Баркод: {product.barcode}</p>}
+              {product.customCode && <p>Захиалгат код: {product.customCode}</p>}
+              {product.packageCount && <p>Багцын тоо: {product.packageCount}</p>}
+              <p>Хотын татвар: {product.allowCityTax ? 'Тийм' : 'Үгүй'}</p>
+              <p>НӨАТ: {product.isVATFree ? 'Чөлөөлөх' : 'Оноох'}</p>
+              {product.categoryID?.id && (
+                <p>
+                  Ангилал:
+                  {(() => {
+                    const cname = getCategoryNameById(product.categoryID.id);
+                    const slug = cname ? slugify(cname) : '';
+                    const href = cname ? `/category/${slug}` : `/category/${product.categoryID.id}`;
+                    return <a href={href} class="ml-1 text-[#f7941e] hover:underline">{cname || `ID ${product.categoryID.id}`}</a>;
+                  })()}
+                </p>
+              )}
+            </div>
+
+            <div class="mt-6 flex gap-3">
+              <button class="px-5 py-3 rounded-lg bg-[#f7941e] text-white hover:bg-[#e28316]">Сагсанд нэмэх</button>
+              <a href="/products" class="px-5 py-3 rounded-lg bg-gray-900 text-white hover:bg-gray-800">Буцах</a>
+            </div>
+          </div>
+        </div>
+
+        {related.length > 0 && (
+          <div class="mt-12">
+            <h2 class="text-xl font-semibold mb-4">Ижил ангиллын бүтээгдэхүүн</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
+              {related.slice(0, 6).map((rp: any) => (
+                <ProductCard product={rp} />
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    ) : (
+      <div class="text-center py-16">
+        <p class="text-gray-600">Бүтээгдэхүүн олдсонгүй.</p>
+        <a href="/products" class="mt-4 inline-block px-4 py-2 rounded bg-gray-900 text-white">Бүтээгдэхүүнүүд рүү буцах</a>
+      </div>
+    )}
+  </section>
+</BaseLayout>
