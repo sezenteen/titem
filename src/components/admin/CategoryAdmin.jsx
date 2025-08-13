@@ -171,7 +171,7 @@ const CategoryAdmin = () => {
 
   // Save or update a category
   const handleSave = async () => {
-    if (!currentCategory.name === "") { // Check for empty ID as well
+    if ((currentCategory.name || "").trim() === "") {
       showAlert("Нэр талбаруудыг бөглөнө үү.");
       return;
     }
