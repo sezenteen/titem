@@ -1,14 +1,30 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import React, { useState, useEffect } from 'react';
 
 const App = ({ formVisible, editingIndex, setCurrentProduct, setSearchBarcode, handleSearchSubmit }) => {
     const [isScanning, setIsScanning] = useState(false);
     const [resultText, setResultText] = useState('Scanning for a barcode...');
-    const scannerRef = useRef(null);
-    const containerId = 'interactive';
+
+    useEffect(() => {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js";
+        script.onload = () => console.log("QuaggaJS loaded");
+        document.body.appendChild(script);
+        return () => document.body.removeChild(script);
+    }, []);
+
+    const requestCameraPermission = async () => {
+        try {
+            await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            return true;
+        } catch {
+            setResultText("Camera access denied. Please allow camera permissions.");
+            return false;
+        }
+    };
 
     const handleBarcodeDetected = (barcode) => {
         setIsScanning(false);
+
         if (formVisible && editingIndex !== null) {
             setCurrentProduct(prev => ({ ...prev, barcode }));
             setResultText(`Loaded existing product barcode: ${barcode}`);
@@ -23,64 +39,57 @@ const App = ({ formVisible, editingIndex, setCurrentProduct, setSearchBarcode, h
     };
 
     const startScanner = async () => {
-        if (isScanning) return;
+        if (typeof window.Quagga === 'undefined') {
+            setResultText("QuaggaJS not loaded yet. Please wait.");
+            return;
+        }
+
+        const hasPermission = await requestCameraPermission();
+        if (!hasPermission) return;
+
         setResultText('Scanning...');
         setIsScanning(true);
 
-        try {
-            scannerRef.current = new Html5QrcodeScanner(
-                containerId,
-                {
-                    fps: 10,
-                    qrbox: { width: 300, height: 300 },
-                    rememberLastUsedCamera: true,
-                    formatsToSupport: [
-                        Html5QrcodeSupportedFormats.QR_CODE,
-                        Html5QrcodeSupportedFormats.EAN_13,
-                        Html5QrcodeSupportedFormats.EAN_8,
-                        Html5QrcodeSupportedFormats.UPC_A,
-                        Html5QrcodeSupportedFormats.UPC_E,
-                        Html5QrcodeSupportedFormats.CODE_128,
-                    ],
+        Quagga.init({
+            inputStream: {
+                name: "Live",
+                type: "LiveStream",
+                target: document.querySelector('#interactive'),
+                constraints: {
+                    width: 640,
+                    height: 480,
+                    facingMode: "environment"
                 },
-                false
-            );
+            },
+            decoder: {
+                readers: ["ean_reader", "ean_8_reader", "upc_reader", "code_128_reader"]
+            },
+            locate: true
+        }, (err) => {
+            if (err) {
+                console.error(err);
+                setResultText("Error accessing camera. Please check permissions.");
+                setIsScanning(false);
+                return;
+            }
+            Quagga.start();
+        });
 
-            const onSuccess = (decodedText) => {
-                scannerRef.current?.clear().catch(() => {});
-                handleBarcodeDetected(decodedText);
-            };
-
-            const onError = () => {
-                // ignore frame errors
-            };
-
-            scannerRef.current.render(onSuccess, onError);
-        } catch (err) {
-            setResultText('Error accessing camera. Please check permissions.');
-            setIsScanning(false);
-        }
+        Quagga.onDetected((result) => {
+            if (result?.codeResult?.code) {
+                handleBarcodeDetected(result.codeResult.code);
+                Quagga.stop();
+            }
+        });
     };
 
-    const stopScanner = async () => {
-        if (scannerRef.current) {
-            try {
-                await scannerRef.current.clear();
-            } catch {}
-            scannerRef.current = null;
+    const stopScanner = () => {
+        if (typeof window.Quagga !== 'undefined') {
+            Quagga.stop();
         }
         setIsScanning(false);
-        setResultText('Scanning stopped.');
+        setResultText("Scanning stopped.");
     };
-
-    useEffect(() => {
-        return () => {
-            if (scannerRef.current) {
-                scannerRef.current.clear().catch(() => {});
-                scannerRef.current = null;
-            }
-        };
-    }, []);
 
     return (
         <div className="min-h-screen bg-gray-100 p-4 font-sans flex items-center justify-center">
@@ -89,7 +98,7 @@ const App = ({ formVisible, editingIndex, setCurrentProduct, setSearchBarcode, h
                     Barcode Scanner
                 </h1>
 
-                <div id={containerId} className="w-full max-w-md h-[300px] bg-gray-200 rounded-xl overflow-hidden shadow-inner border-4 border-gray-300">
+                <div id="interactive" className="w-full max-w-md h-[300px] bg-gray-200 rounded-xl overflow-hidden shadow-inner border-4 border-gray-300">
                     {!isScanning && (
                         <div className="h-full flex items-center justify-center text-center text-gray-500 text-lg">
                             Press "Start Scanner" to activate your camera.
