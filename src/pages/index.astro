@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import Carousel from "../components/Carousel.astro";
 
 const PAGE_SIZE = 20; // products per page
 const url = new URL(Astro.request.url);
@@ -27,19 +28,16 @@ try {
 
 // Display all fetched products in the main grid
 const mainProducts = products;
-// Use a slice of the fetched products for the horizontal scroll.
-// Note: This means the scrolling products will change with each page.
-// For a static "Gift Items" section, you would need a separate API call.
-const scrollingProducts = products.slice(0, 8);
+// For featured ribbons, pick the first 8 of current page
+const featured = products.slice(0, 8);
 
 function getPageUrl(p) {
-    // Ensure the page number is valid
     const validPage = Math.max(1, Math.min(p, totalPages));
     return `/?page=${validPage}`;
 }
 
-// Create pagination range with ellipsis - simplified and more robust logic
-const pageRange = 2; // Number of pages to show around the current page
+// Create pagination range with ellipsis
+const pageRange = 2;
 const pages = [];
 if (totalPages > 1) {
     const start = Math.max(1, page - pageRange);
@@ -47,74 +45,67 @@ if (totalPages > 1) {
 
     if (start > 1) {
         pages.push(1);
-        if (start > 2) {
-            pages.push("...");
-        }
+        if (start > 2) pages.push("...");
     }
-
-    for (let i = start; i <= end; i++) {
-        pages.push(i);
-    }
-
+    for (let i = start; i <= end; i++) pages.push(i);
     if (end < totalPages) {
-        if (end < totalPages - 1) {
-            pages.push("...");
-        }
+        if (end < totalPages - 1) pages.push("...");
         pages.push(totalPages);
     }
 }
 ---
 
 <BaseLayout title="Нүүр хуудас">
-    <main class="px-[3%] py-3 2xl:px-[8%]">
+    <div class="px-[3%] py-3 2xl:px-[8%]">
+        <Carousel />
+    </div>
 
-        <!-- Main Carousel Section -->
-        <!-- ... your carousel code stays unchanged ... -->
+    <section class="max-w-7xl mx-auto px-6 lg:px-8">
+        <!-- Category ribbon -->
+        <div class="mt-4 mb-6">
+            <div class="flex items-center gap-2 text-gray-700 mb-2">
+                <span class="h-3 w-3 rounded-full bg-[#f7941e]"></span>
+                <h2 class="text-xl font-semibold">Ангилал</h2>
+            </div>
+            <nav class="bg-white rounded-xl shadow p-3">
+                <!-- CategoryList is inside Header; this is an extra space for future custom ribbons if needed -->
+                <div class="text-sm text-gray-500">Дээд цэсэнд байрлах ангиллыг ашиглаж хайж болно.</div>
+            </nav>
+        </div>
 
-        <!-- Featured/Gift Items Horizontal Scroll Section -->
-        <div class="max-w-6xl mx-auto mt-8">
-            <h2 class="text-2xl font-bold mb-4">Бэлэг дурсгал (Gift Items)</h2>
-            <div x-data="{ scrollLeft() { this.$refs.slider.scrollBy({ left: -300, behavior: 'smooth' }); }, scrollRight() { this.$refs.slider.scrollBy({ left: 300, behavior: 'smooth' }); } }" class="relative">
-                <button @click="scrollLeft" class="absolute left-0 top-1/2 -translate-y-1/2 bg-white shadow-lg p-2 rounded-full z-10 hidden md:block hover:scale-105 transition-transform duration-200" aria-label="Scroll left">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                </button>
-                <div x-ref="slider" class="flex overflow-x-auto space-x-4 p-4 scrollbar-hide snap-x snap-mandatory">
-                    {scrollingProducts.map((product: any) => (
-                        <a href={`/product/${product.id}`} class="flex-shrink-0 w-64 snap-start hover:shadow-lg transition-shadow duration-200 rounded-lg overflow-hidden bg-white">
-                            <img src={product.imagePath} class="w-full h-40 object-cover" alt={product.name} />
-                            <div class="p-3">
-                                <h4 class="font-semibold text-sm">{product.name}</h4>
-                                <p class="text-gray-600 text-xs">{product.category}</p>
-                            </div>
-                        </a>
-                    ))}
-                </div>
-                <button @click="scrollRight" class="absolute right-0 top-1/2 -translate-y-1/2 bg-white shadow-lg p-2 rounded-full z-10 hidden md:block hover:scale-105 transition-transform duration-200" aria-label="Scroll right">
-                    <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
-                </button>
+        <!-- Featured row -->
+        <div class="mt-6">
+            <div class="flex items-center gap-2 text-gray-700 mb-3">
+                <span class="h-3 w-3 rounded-full bg-[#003375]"></span>
+                <h2 class="text-xl font-semibold">Онцлох</h2>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
+                {featured.map((p: any) => (
+                    <ProductCard product={p} />
+                ))}
             </div>
         </div>
 
-        <!-- Main Product Grid Section -->
-        <div class="bg-gray-100 p-6 max-w-6xl mx-auto mt-8 rounded-lg shadow-inner">
+        <!-- All products grid -->
+        <div class="bg-gray-50 p-6 rounded-xl shadow-inner mt-8">
             <h2 class="text-2xl font-semibold text-center mb-6">Шинэ бүтээгдэхүүнүүд</h2>
-            
+
             {error ? (
                 <div class="text-center py-12">
                     <p class="text-xl text-red-600">{error}</p>
                 </div>
             ) : mainProducts.length > 0 ? (
                 <>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-4">
                         {mainProducts.map((product: any) => (
                             <ProductCard product={product} />
                         ))}
                     </div>
 
                     {totalPages > 1 && (
-                        <div class="flex justify-center mt-8 space-x-2">
+                        <div class="flex flex-wrap justify-center mt-8 gap-2">
                             {page > 1 && (
-                                <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
+                                <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-white border text-gray-700 hover:bg-gray-50">
                                     Өмнөх
                                 </a>
                             )}
@@ -122,13 +113,13 @@ if (totalPages > 1) {
                                 p === "..." ? (
                                     <span class="px-3 py-1 text-gray-500">...</span>
                                 ) : (
-                                    <a href={getPageUrl(p)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>
+                                    <a href={getPageUrl(p)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>
                                         {p}
                                     </a>
                                 )
                             ))}
                             {page < totalPages && (
-                                <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">
+                                <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-white border text-gray-700 hover:bg-gray-50">
                                     Дараах
                                 </a>
                             )}
@@ -142,12 +133,5 @@ if (totalPages > 1) {
                 </div>
             )}
         </div>
-    </main>
+    </section>
 </BaseLayout>
-
-<style>
-    .scrollbar-hide::-webkit-scrollbar { display: none; }
-    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    .snap-x { scroll-snap-type: x mandatory; }
-    .snap-start { scroll-snap-align: start; }
-</style>
