@@ -2,26 +2,31 @@
 interface Props {
   id: number;
   name: string;
-  shortName: string;
+  shortName?: string;
   categoryId?: number;
   categoryName?: string;
-  imagePath: string;
-  price: number;
+  imagePath?: string;
+  price?: number | string;
 }
 
 const { product } = Astro.props as { product: Props };
+const displayImage = product.imagePath || 'https://placehold.co/600x400/E5E7EB/6B7280?text=No+Image';
+const displayShort = product.shortName || '';
+const displayPrice = product.price ?? '-';
 ---
 <div class="bg-white shadow rounded-lg overflow-hidden">
-    <img src={product.imagePath} alt={product.name} class="w-full h-48 object-cover" />
-    <div class="p-4">
-        <h2 class="text-lg font-semibold text-gray-900 truncate">{product.name}</h2>
-        <p class="text-sm text-gray-600 truncate">{product.shortName}</p>
-        {product.categoryName && (
-            <p class="mt-1 text-xs text-gray-500">Ангилал: {product.categoryName}</p>
-        )}
-        <p class="mt-2 text-gray-800">Үнэ: {product.price}</p>
-        <a href={`/product/${product.id}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
-            Дэлгэрэнгүй
-        </a>
-    </div>
+  <img src={displayImage} alt={product.name} class="w-full h-48 object-cover" />
+  <div class="p-4">
+    <h2 class="text-base sm:text-lg font-semibold text-gray-900 truncate">{product.name}</h2>
+    {displayShort && <p class="text-sm text-gray-600 truncate">{displayShort}</p>}
+    {(product.categoryName || product.categoryId) && (
+      <p class="mt-1 text-xs text-gray-500">
+        Ангилал: {product.categoryName || `ID ${product.categoryId}`}
+      </p>
+    )}
+    <p class="mt-2 text-gray-800">Үнэ: {displayPrice}{typeof displayPrice === 'number' ? ' ₮' : ''}</p>
+    <a href={`/product/${product.id}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
+      Дэлгэрэнгүй
+    </a>
+  </div>
 </div>
