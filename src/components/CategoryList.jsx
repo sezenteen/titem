@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 
 const slugify = (name) =>
   encodeURIComponent(String(name || '')
@@ -33,6 +34,32 @@ const CategoryList = () => {
     return () => controller.abort();
   }, []);
 
+  // Added: axios request per provided snippet (runs once on mount)
+  useEffect(() => {
+    const data = '{\r\n  "name": "John Doe",\r\n  "register": "XYZ12345678",\r\n  "email": "john.doe@example.com",\r\n  "description": "This is an example customer description."\r\n}';
+
+    const config = {
+      method: 'get',
+      maxBodyLength: Infinity,
+      url: 'http://localhost:8080/api/product',
+      headers: {
+        'Content-Type': 'text/plain',
+      },
+      data,
+    };
+
+    axios.request(config)
+      .then((response) => {
+        // Log the API response as requested
+        // eslint-disable-next-line no-console
+        console.log(JSON.stringify(response.data));
+      })
+      .catch((err) => {
+        // eslint-disable-next-line no-console
+        console.log(err);
+      });
+  }, []);
+
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
   const items = useMemo(() => categories.map((c) => ({ ...c, slug: slugify(c.name) })), [categories]);
@@ -53,7 +80,6 @@ const CategoryList = () => {
         <span>{error}</span>
         <button
           onClick={() => {
-            // Simple retry by resetting state to loading; effect will not re-run without a trigger, so reload
             window.location.reload();
           }}
           className="px-2 py-1 bg-red-600 text-white rounded-md text-xs"
