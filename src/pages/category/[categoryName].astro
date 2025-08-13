@@ -2,9 +2,7 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 
-const slugify = (name: string) => encodeURIComponent(String(name || '').trim().toLowerCase().replace(/\s+/g, '-'));
-
-// Build-time paths for categories
+// Build-time paths for categories (still generated, but we will prefer numeric links elsewhere)
 export async function getStaticPaths() {
     let categories = [];
     try {
@@ -16,159 +14,112 @@ export async function getStaticPaths() {
         return [];
     }
 
+    // Generate no paths if you want to avoid slugs entirely:
+    // return [];
+
+    // Otherwise, keep existing for backwards compatibility
     return categories.map((category: { id: number; name: string }) => ({
-        params: { categoryName: slugify(category.name) },
+        params: { categoryName: String(category.id) },
         props: { categoryId: category.id, categoryTitle: category.name }
     }));
 }
 
 const { categoryName } = Astro.params;
-const { categoryId, categoryTitle } = Astro.props;
+let numericCategoryId = parseInt(String(categoryName), 10);
+let categoryId = Number.isFinite(numericCategoryId) ? numericCategoryId : undefined;
+let categoryTitle = '';
 
 // Pagination setup
 const PAGE_SIZE = 12;
 const url = new URL(Astro.request.url);
 const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
 
-// Fetch categories first to resolve id from slug at runtime
+// Fetch categories to resolve title and validate id
 let sidebarCategories: Array<{ id: number; name: string }> = [];
 try {
     const cRes = await fetch('http://localhost:8080/api/category');
-    if (cRes.ok) {
-        sidebarCategories = await cRes.json();
-    }
-} catch (e) {
-    console.error("Error fetching categories for sidebar:", e);
+    if (cRes.ok) sidebarCategories = await cRes.json();
+} catch {}
+
+if (categoryId) {
+    const found = sidebarCategories.find(c => c.id === categoryId);
+    if (found) categoryTitle = found.name;
 }
 
-// Resolve category id/title from slug if needed
-let resolvedCategoryId: number | undefined = categoryId;
-let resolvedCategoryTitle: string | undefined = categoryTitle;
-if (!resolvedCategoryId && sidebarCategories.length > 0) {
-    const match = sidebarCategories.find((c) => slugify(c.name) === categoryName);
-    if (match) {
-        resolvedCategoryId = match.id;
-        resolvedCategoryTitle = match.name;
-    }
-}
-
-// Fetch products by resolved id
+// Fetch products by numeric id
 let products: any[] = [];
-let totalProducts = 0;
 let totalPages = 0;
-
 try {
-    if (resolvedCategoryId) {
-        const productsResponse = await fetch(
-            `http://localhost:8080/api/product/cat/${resolvedCategoryId}?page=${page - 1}&size=${PAGE_SIZE}`
-        );
+    if (categoryId) {
+        const productsResponse = await fetch(`http://localhost:8080/api/product/cat/${categoryId}?page=${page - 1}&size=${PAGE_SIZE}`);
         if (!productsResponse.ok) throw new Error(`HTTP error! status: ${productsResponse.status}`);
         const data = await productsResponse.json();
-        products = (data.content || []).filter((product: any) => product);
-        totalProducts = data.totalElements || 0;
+        products = Array.isArray(data.content) ? data.content : [];
         totalPages = data.totalPages || 0;
     }
-} catch (error) {
-    console.error(`Error fetching paginated products for category ${categoryName}:`, error);
+} catch (e) {
     products = [];
 }
 
 function getPageUrl(p: number) {
     const valid = Math.max(1, Math.min(p, totalPages));
-    return `/category/${categoryName}?page=${valid}`;
+    return `/category/${categoryId}?page=${valid}`;
 }
 
-// Generate page numbers with ellipsis
 const pageRange = 2;
-const pages = [];
+const pages: (number | string)[] = [];
 if (totalPages > 1) {
-    if (page > pageRange + 1) {
+    const start = Math.max(1, page - pageRange);
+    const end = Math.min(totalPages, page + pageRange);
+    if (start > 1) {
         pages.push(1);
-        pages.push("...");
+        if (start > 2) pages.push('...');
     }
-    for (let i = Math.max(1, page - pageRange); i <= Math.min(totalPages, page + pageRange); i++) {
-        pages.push(i);
-    }
-    if (page < totalPages - pageRange) {
-        if (page < totalPages - pageRange - 1) {
-            pages.push("...");
-        }
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages) {
+        if (end < totalPages - 1) pages.push('...');
         pages.push(totalPages);
     }
 }
 ---
 
-<BaseLayout title={resolvedCategoryTitle ? `${resolvedCategoryTitle} Ангилал` : `Ангилал`}>
+<BaseLayout title={categoryTitle ? `${categoryTitle} Ангилал` : `Ангилал`}>
     <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div class="flex items-center justify-between mb-4 lg:mb-6">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{resolvedCategoryTitle || 'Ангилал'}</h1>
-            <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
-                Ангилал
-            </button>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || 'Ангилал'}</h1>
+            <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">Ангилал</button>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <!-- Sidebar -->
             <aside class="lg:col-span-3">
-                <!-- Desktop sidebar -->
                 <div class="hidden lg:block sticky top-24 max-h-[70vh] overflow-y-auto pr-2">
-                    <nav aria-label="Category list" class="space-y-1">
-                        {sidebarCategories.length > 0 ? (
-                            sidebarCategories.map((cat) => (
-                                <a
-                                    href={`/category/${slugify(cat.name)}`}
-                                    class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
-                                >
-                                    {cat.name}
-                                </a>
-                            ))
-                        ) : (
-                            <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
-                        )}
+                    <nav class="space-y-1">
+                        {sidebarCategories.map(cat => (
+                            <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
+                        ))}
                     </nav>
                 </div>
-
-                <!-- Mobile overlay panel -->
                 <div x-show="open" x-cloak class="fixed inset-0 z-50 lg:hidden">
                     <div class="absolute inset-0 bg-black/40" @click="open=false"></div>
                     <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto shadow-xl">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-lg font-semibold">Ангилал</h2>
-                            <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100">
-                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-                            </button>
+                            <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100">✕</button>
                         </div>
-                        <nav aria-label="Category list (mobile)" class="space-y-1">
-                            {sidebarCategories.length > 0 ? (
-                                sidebarCategories.map((cat) => (
-                                    <a
-                                        href={`/category/${slugify(cat.name)}`}
-                                        class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
-                                        @click="open=false"
-                                    >
-                                        {cat.name}
-                                    </a>
-                                ))
-                            ) : (
-                                <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
-                            )}
+                        <nav class="space-y-1">
+                            {sidebarCategories.map(cat => (
+                                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
+                            ))}
                         </nav>
                     </div>
                 </div>
             </aside>
 
-            <!-- Content -->
             <div class="lg:col-span-9">
                 <nav class="mb-4 text-sm text-gray-600" aria-label="Breadcrumb">
-                    <ol class="list-none p-0 inline-flex">
-                        <li class="flex items-center">
-                            <a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a>
-                            <span class="mx-2">/</span>
-                        </li>
-                        <li class="flex items-center">
-                            <span class="font-semibold text-gray-800">{resolvedCategoryTitle || 'Ангилал'}</span>
-                        </li>
+                    <ol class="inline-flex">
+                        <li><a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a><span class="mx-2">/</span></li>
+                        <li><span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span></li>
                     </ol>
                 </nav>
 
@@ -176,57 +127,26 @@ if (totalPages > 1) {
                     <>
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {products.map((product: any) => (
-                                <ProductCard product={{
-                                  ...product,
-                                  categoryName: resolvedCategoryTitle,
-                                  categoryId: product?.categoryID?.id ?? resolvedCategoryId
-                                }} />
+                                <ProductCard product={{ ...product, categoryName: categoryTitle, categoryId: product?.categoryID?.id ?? categoryId }} />
                             ))}
                         </div>
 
                         {totalPages > 1 && (
                             <div class="flex justify-center mt-8 space-x-2">
-                                <a
-                                    href={getPageUrl(page - 1)}
-                                    class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                >
-                                    Өмнөх
-                                </a>
-
+                                <a href={getPageUrl(page - 1)} class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Өмнөх</a>
                                 {pages.map(p => (
-                                    p === "..." ? (
-                                        <span class="px-3 py-1 text-gray-500">...</span>
-                                    ) : (
-                                        <a
-                                            href={getPageUrl(p)}
-                                            class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}
-                                        >
-                                            {p}
-                                        </a>
-                                    )
+                                    p === '...' ? <span class="px-3 py-1 text-gray-500">...</span> : <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>{p}</a>
                                 ))}
-
-                                <a
-                                    href={getPageUrl(page + 1)}
-                                    class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
-                                >
-                                    Дараах
-                                </a>
+                                <a href={getPageUrl(page + 1)} class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>Дараах</a>
                             </div>
                         )}
                     </>
                 ) : (
                     <div class="text-center py-12">
                         <p class="text-xl text-gray-600">Одоогоор энэ ангилалд бүтээгдэхүүн байхгүй байна.</p>
-                        <p class="text-gray-500 mt-2">Дараарай дахин шалгана уу эсвэл өөр ангилал сонгоно уу.</p>
                     </div>
                 )}
             </div>
         </div>
     </section>
-
-    <style>
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
 </BaseLayout>

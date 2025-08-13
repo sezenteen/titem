@@ -105,7 +105,7 @@ const CategoryList = () => {
         Бүгд
       </a>
       {items.map((category) => {
-        const href = `/category/${category.slug}`;
+        const href = `/category/${category.id}`;
         const isActive = currentPath.startsWith(href);
         return (
           <a
