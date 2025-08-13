@@ -5,7 +5,7 @@ import Carousel from "../components/Carousel.astro";
 
 const PAGE_SIZE = 20; // products per page
 const url = new URL(Astro.request.url);
-const page = parseInt(url.searchParams.get('page') ?? '1', 10); // frontend 1-indexed
+const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10)); // frontend 1-indexed
 
 let products = [];
 let totalProducts = 0;
@@ -20,7 +20,7 @@ try {
     const data = await response.json();
     products = data.content || [];
     totalProducts = data.totalElements || 0;
-    totalPages = data.totalPages || 0;
+    totalPages = Math.max(1, data.totalPages || 0);
 } catch (err) {
     console.error("Бүтээгдэхүүнийг татаж чадсангүй:", err);
     error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
@@ -68,7 +68,6 @@ if (totalPages > 1) {
                 <h2 class="text-xl font-semibold">Ангилал</h2>
             </div>
             <nav class="bg-white rounded-xl shadow p-3">
-                <!-- CategoryList is inside Header; this is an extra space for future custom ribbons if needed -->
                 <div class="text-sm text-gray-500">Дээд цэсэнд байрлах ангиллыг ашиглаж хайж болно.</div>
             </nav>
         </div>
@@ -104,11 +103,9 @@ if (totalPages > 1) {
 
                     {totalPages > 1 && (
                         <div class="flex flex-wrap justify-center mt-8 gap-2">
-                            {page > 1 && (
-                                <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-white border text-gray-700 hover:bg-gray-50">
-                                    Өмнөх
-                                </a>
-                            )}
+                            <a href={getPageUrl(page - 1)} class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+                                Өмнөх
+                            </a>
                             {pages.map(p => (
                                 p === "..." ? (
                                     <span class="px-3 py-1 text-gray-500">...</span>
@@ -118,11 +115,9 @@ if (totalPages > 1) {
                                     </a>
                                 )
                             ))}
-                            {page < totalPages && (
-                                <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-white border text-gray-700 hover:bg-gray-50">
-                                    Дараах
-                                </a>
-                            )}
+                            <a href={getPageUrl(page + 1)} class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+                                Дараах
+                            </a>
                         </div>
                     )}
                 </>

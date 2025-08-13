@@ -3,7 +3,8 @@ interface Props {
   id: number;
   name: string;
   shortName: string;
-  categoryId: number;
+  categoryId?: number;
+  categoryName?: string;
   imagePath: string;
   price: number;
 }
@@ -13,13 +14,14 @@ const { product } = Astro.props as { product: Props };
 <div class="bg-white shadow rounded-lg overflow-hidden">
     <img src={product.imagePath} alt={product.name} class="w-full h-48 object-cover" />
     <div class="p-4">
-        <h2 class="text-lg font-semibold text-gray-900">{product.name}</h2>
-        <p class="text-sm text-gray-600">{product.shortName}</p>
-        <p class="mt-2 text-gray-800">Price: {product.price}</p>
+        <h2 class="text-lg font-semibold text-gray-900 truncate">{product.name}</h2>
+        <p class="text-sm text-gray-600 truncate">{product.shortName}</p>
+        {product.categoryName && (
+            <p class="mt-1 text-xs text-gray-500">Ангилал: {product.categoryName}</p>
+        )}
+        <p class="mt-2 text-gray-800">Үнэ: {product.price}</p>
         <a href={`/product/${product.id}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
             Дэлгэрэнгүй
         </a>
     </div>
-
- 
 </div>
