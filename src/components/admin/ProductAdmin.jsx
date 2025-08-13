@@ -45,44 +45,71 @@ const AdminProductTable = ({ products, onEdit, onDelete, currentPage, totalPages
             {products.length === 0 ? (
                 <p className="text-gray-600">Бүтээгдэхүүн олдсонгүй.</p>
             ) : (
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                <table className="min-w-full table-auto divide-y divide-gray-200">
+                    <thead className="bg-gray-50 hidden md:table-header-group">
                         <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Нэр</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Богино Нэр</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Баркод</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үнэ</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категори ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хэмжих Нэгж ID</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хотын Татвар</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">НӨАТгүй</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Үйлдэл</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tl-lg">Нэр</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Богино Нэр</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Баркод</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Үнэ</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Категори ID</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хэмжих Нэгж ID</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Хотын Татвар</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">НӨАТгүй</th>
+                            <th className="px-4 md:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider rounded-tr-lg">Үйлдэл</th>
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                         {products.map((product, index) => (
-                            <tr key={product.id || index} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.shortName}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.barcode}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.price}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.categoryID?.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.measureUnitID?.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.allowCityTax ? "Тийм" : "Үгүй"}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{product.isVATFree ? "Тийм" : "Үгүй"}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                    <button
-                                        onClick={() => onEdit(index)}
-                                        className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium transition-colors"
-                                    >
-                                        Засах
-                                    </button>
-                                    <button
-                                        onClick={() => onDelete(index)}
-                                        className="text-red-600 hover:text-red-900 font-medium transition-colors"
-                                    >
-                                        Устгах
-                                    </button>
+                            <tr key={product.id || index} className="hover:bg-gray-50 block md:table-row">
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm font-medium text-gray-900 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Нэр</span>
+                                    <span>{product.name}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Богино Нэр</span>
+                                    <span>{product.shortName}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Баркод</span>
+                                    <span>{product.barcode}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Үнэ</span>
+                                    <span>{product.price}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Категори ID</span>
+                                    <span>{product.categoryID?.id}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Хэмжих Нэгж ID</span>
+                                    <span>{product.measureUnitID?.id}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Хотын Татвар</span>
+                                    <span>{product.allowCityTax ? "Тийм" : "Үгүй"}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm text-gray-500 flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">НӨАТгүй</span>
+                                    <span>{product.isVATFree ? "Тийм" : "Үгүй"}</span>
+                                </td>
+                                <td className="px-4 md:px-6 py-2 md:py-4 whitespace-nowrap text-sm flex md:table-cell justify-between">
+                                    <span className="md:hidden text-gray-500">Үйлдэл</span>
+                                    <span>
+                                        <button
+                                            onClick={() => onEdit(index)}
+                                            className="text-indigo-600 hover:text-indigo-900 mr-3 font-medium transition-colors"
+                                        >
+                                            Засах
+                                        </button>
+                                        <button
+                                            onClick={() => onDelete(index)}
+                                            className="text-red-600 hover:text-red-900 font-medium transition-colors"
+                                        >
+                                            Устгах
+                                        </button>
+                                    </span>
                                 </td>
                             </tr>
                         ))}
