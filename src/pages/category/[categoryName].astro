@@ -2,6 +2,8 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 
+const slugify = (name: string) => encodeURIComponent(String(name || '').trim().toLowerCase().replace(/\s+/g, '-'));
+
 // Build-time paths for categories
 export async function getStaticPaths() {
     let categories = [];
@@ -15,7 +17,7 @@ export async function getStaticPaths() {
     }
 
     return categories.map((category: { id: number; name: string }) => ({
-        params: { categoryName: category.name.toLowerCase().replace(/\s+/g, '-') },
+        params: { categoryName: slugify(category.name) },
         props: { categoryId: category.id, categoryTitle: category.name }
     }));
 }
@@ -26,7 +28,7 @@ const { categoryId, categoryTitle } = Astro.props;
 // Pagination setup
 const PAGE_SIZE = 12;
 const url = new URL(Astro.request.url);
-const page = parseInt(url.searchParams.get('page') ?? '1', 10);
+const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
 
 let products: any[] = [];
 let totalProducts = 0;
@@ -63,7 +65,8 @@ try {
 }
 
 function getPageUrl(p: number) {
-    return `/category/${categoryName}?page=${p}`;
+    const valid = Math.max(1, Math.min(p, totalPages));
+    return `/category/${categoryName}?page=${valid}`;
 }
 
 // Generate page numbers with ellipsis
@@ -105,7 +108,7 @@ if (totalPages > 1) {
                         {sidebarCategories.length > 0 ? (
                             sidebarCategories.map((cat) => (
                                 <a
-                                    href={`/category/${cat.name.toLowerCase().replace(/\s+/g,'-')}`}
+                                    href={`/category/${slugify(cat.name)}`}
                                     class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
                                 >
                                     {cat.name}
@@ -131,7 +134,7 @@ if (totalPages > 1) {
                             {sidebarCategories.length > 0 ? (
                                 sidebarCategories.map((cat) => (
                                     <a
-                                        href={`/category/${cat.name.toLowerCase().replace(/\s+/g,'-')}`}
+                                        href={`/category/${slugify(cat.name)}`}
                                         class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}
                                         @click="open=false"
                                     >
@@ -164,42 +167,42 @@ if (totalPages > 1) {
                     <>
                         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                             {products.map((product: any) => (
-                                <ProductCard product={product} />
+                                <ProductCard product={{
+                                  ...product,
+                                  categoryName: categoryTitle,
+                                  categoryId: product?.categoryID?.id ?? undefined
+                                }} />
                             ))}
                         </div>
 
                         {totalPages > 1 && (
                             <div class="flex justify-center mt-8 space-x-2">
-                                {page > 1 && (
-                                    <a
-                                        href={getPageUrl(page - 1)}
-                                        class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                    >
-                                        Өмнөх
-                                    </a>
-                                )}
+                                                        <a
+                            href={getPageUrl(page - 1)}
+                            class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            Өмнөх
+                        </a>
 
-                                {pages.map(p => (
-                                    p === "..." ? (
-                                        <span class="px-3 py-1 text-gray-500">...</span>
-                                    ) : (
-                                        <a
-                                            href={getPageUrl(p)}
-                                            class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                        >
-                                            {p}
-                                        </a>
-                                    )
-                                ))}
+                        {pages.map(p => (
+                            p === "..." ? (
+                                <span class="px-3 py-1 text-gray-500">...</span>
+                            ) : (
+                                <a
+                                    href={getPageUrl(p)}
+                                    class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}
+                                >
+                                    {p}
+                                </a>
+                            )
+                        ))}
 
-                                {page < totalPages && (
-                                    <a
-                                        href={getPageUrl(page + 1)}
-                                        class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                                    >
-                                        Дараах
-                                    </a>
-                                )}
+                        <a
+                            href={getPageUrl(page + 1)}
+                            class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                        >
+                            Дараах
+                        </a>
                             </div>
                         )}
                     </>
