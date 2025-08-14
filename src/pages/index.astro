@@ -14,16 +14,45 @@ let totalPages = 0;
 let error = null;
 let currentPage = page;
 
-// Fetch paginated products from backend
+// Fetch paginated products from backend (robust: clamp out-of-range and refetch last page if needed)
 try {
     const data = await apiClient.products.getPage(page - 1, PAGE_SIZE);
-    products = data.content || [];
-    totalProducts = data.totalElements || 0;
     totalPages = Math.max(1, data.totalPages || 0);
-    currentPage = Math.min(page, totalPages);
+    const clamped = Math.min(page, totalPages);
+
+    if (page > totalPages) {
+        const lastData = await apiClient.products.getPage(clamped - 1, PAGE_SIZE);
+        products = lastData.content || [];
+        totalProducts = lastData.totalElements || 0;
+    } else {
+        products = data.content || [];
+        totalProducts = data.totalElements || 0;
+    }
+
+    currentPage = clamped;
 } catch (err) {
-    console.error("Бүтээгдэхүүнийг татаж чадсангүй:", err);
-    error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
+    console.error("Бүтээгдэхүүнийг татаж чадсангүй (1-р оролдлого):", err);
+    try {
+        const firstData = await apiClient.products.getPage(0, PAGE_SIZE);
+        totalPages = Math.max(1, firstData.totalPages || 0);
+        const clamped = Math.min(page, totalPages);
+        currentPage = clamped;
+
+        if (clamped === 1) {
+            products = firstData.content || [];
+            totalProducts = firstData.totalElements || 0;
+        } else {
+            const clampedData = await apiClient.products.getPage(clamped - 1, PAGE_SIZE);
+            products = clampedData.content || [];
+            totalProducts = clampedData.totalElements || 0;
+        }
+    } catch (err2) {
+        console.error("Бүтээгдэхүүнийг татаж чадсангүй (сүүлчийн оролдлого):", err2);
+        error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
+        products = [];
+        totalPages = 1;
+        currentPage = 1;
+    }
 }
 
 // Display all fetched products in the main grid
