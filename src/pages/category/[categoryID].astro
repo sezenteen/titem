@@ -22,6 +22,7 @@ export async function getStaticPaths() {
 
 const { categoryID } = Astro.params;
 const { categoryId, categoryTitle } = Astro.props;
+const resolvedCategoryId: number = typeof categoryId === 'number' ? categoryId : Number(categoryID);
 
 // Pagination setup
 const PAGE_SIZE = 12;
@@ -33,12 +34,12 @@ let totalProducts = 0;
 let totalPages = 0;
 
 try {
-  const data = await apiClient.products.getByCategoryId(categoryId, page - 1, PAGE_SIZE);
-  products = Array.isArray(data.content) ? data.content.filter((p: any) => p && p.imagePath) : [];
+  const data = await apiClient.products.getByCategoryId(resolvedCategoryId, page - 1, PAGE_SIZE);
+  products = Array.isArray(data.content) ? data.content : [];
   totalProducts = data.totalElements || 0;
   totalPages = data.totalPages || 0;
 } catch (error) {
-  console.error(`Error fetching paginated products for category ${categoryID}:`, error);
+  console.error(`Error fetching paginated products for category ${resolvedCategoryId}:`, error);
   products = [];
 }
 
@@ -71,10 +72,10 @@ if (totalPages > 1) {
 }
 ---
 
-<BaseLayout title={categoryTitle ? `${categoryTitle} Ангилал` : `Ангилал`}>
+<BaseLayout title={(categoryTitle || (sidebarCategories.find(c => c.id === resolvedCategoryId)?.name)) ? `${categoryTitle || sidebarCategories.find(c => c.id === resolvedCategoryId)?.name} Ангилал` : `Ангилал`}>
   <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex items-center justify-between mb-4 lg:mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || 'Ангилал'}</h1>
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || sidebarCategories.find(c => c.id === resolvedCategoryId)?.name || 'Ангилал'}</h1>
       <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
         Ангилал
       </button>
@@ -88,7 +89,7 @@ if (totalPages > 1) {
           <nav aria-label="Category list" class="space-y-1">
             {sidebarCategories.length > 0 ? (
               sidebarCategories.map((cat) => (
-                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
+                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
               ))
             ) : (
               <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
@@ -107,7 +108,7 @@ if (totalPages > 1) {
             <nav aria-label="Category list (mobile)" class="space-y-1">
               {sidebarCategories.length > 0 ? (
                 sidebarCategories.map((cat) => (
-                  <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === categoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
+                  <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
                 ))
               ) : (
                 <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
@@ -137,7 +138,7 @@ if (totalPages > 1) {
             {totalPages > 1 && (
               <div class="flex justify-center mt-8 space-x-2">
                 {page > 1 && <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Өмнөх</a>}
-                {pages.map(p => (p === '...' ? <span class="px-3 py-1 text-gray-500">...</span> : <a href={getPageUrl(p)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{p}</a>))}
+                {pages.map(p => (p === '...' ? <span class="px-3 py-1 text-gray-500">...</span> : <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{p}</a>))}
                 {page < totalPages && <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Дараах</a>}
               </div>
             )}
