@@ -12,6 +12,7 @@ let products = [];
 let totalProducts = 0;
 let totalPages = 0;
 let error = null;
+let currentPage = page;
 
 // Fetch paginated products from backend
 try {
@@ -19,6 +20,7 @@ try {
     products = data.content || [];
     totalProducts = data.totalElements || 0;
     totalPages = Math.max(1, data.totalPages || 0);
+    currentPage = Math.min(page, totalPages);
 } catch (err) {
     console.error("Бүтээгдэхүүнийг татаж чадсангүй:", err);
     error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
@@ -38,8 +40,8 @@ function getPageUrl(p) {
 const pageRange = 2;
 const pages = [];
 if (totalPages > 1) {
-    const start = Math.max(1, page - pageRange);
-    const end = Math.min(totalPages, page + pageRange);
+    const start = Math.max(1, currentPage - pageRange);
+    const end = Math.min(totalPages, currentPage + pageRange);
 
     if (start > 1) {
         pages.push(1);
@@ -101,19 +103,19 @@ if (totalPages > 1) {
 
                     {totalPages > 1 && (
                         <div class="flex flex-wrap justify-center mt-8 gap-2">
-                            <a href={getPageUrl(page - 1)} class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+                            <a href={getPageUrl(currentPage - 1)} class={`px-3 py-1 rounded border ${currentPage <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
                                 Өмнөх
                             </a>
                             {pages.map(p => (
                                 p === "..." ? (
                                     <span class="px-3 py-1 text-gray-500">...</span>
                                 ) : (
-                                    <a href={getPageUrl(p)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>
+                                    <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${currentPage === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>
                                         {p}
                                     </a>
                                 )
                             ))}
-                            <a href={getPageUrl(page + 1)} class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+                            <a href={getPageUrl(currentPage + 1)} class={`px-3 py-1 rounded border ${currentPage >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
                                 Дараах
                             </a>
                         </div>
