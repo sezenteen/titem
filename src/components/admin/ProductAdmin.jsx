@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from 'react-dom';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import apiClient from '../../api/apiClient.jsx';
 
 // A mock component for AdminProductTable.
 // This displays the list of products in a responsive table format.
@@ -308,9 +309,7 @@ const ProductAdmin = () => {
     const fetchProducts = useCallback(async (page = 0) => {
         setLoading(true); setError(null);
         try {
-            const response = await fetch(`${API_BASE}?page=${page}&size=${PAGE_SIZE}`);
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
-            const data = await response.json();
+            const data = await apiClient.products.getPage(page, PAGE_SIZE);
             setProducts(data.content);
             setCurrentPage(data.number); // Update current page from API response
             setTotalPages(data.totalPages); // Update total pages from API response
@@ -372,12 +371,12 @@ const ProductAdmin = () => {
         const url = editingIndex !== null ? `${API_BASE}/${products[editingIndex].id}` : API_BASE;
 
         try {
-            const response = await fetch(url, {
-                method, headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(currentProduct),
-            });
-
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+            const payload = currentProduct;
+            if (editingIndex !== null) {
+                await apiClient.products.update(products[editingIndex].id, payload);
+            } else {
+                await apiClient.products.create(payload);
+            }
 
             showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
             setFormVisible(false);
@@ -388,7 +387,6 @@ const ProductAdmin = () => {
                 packageCount: 1, mainCategoryCode: "", isVATFree: false,
             });
             setEditingIndex(null);
-            // After save, refresh the current page to see the new/updated product
             fetchProducts(currentPage);
         } catch (err) {
             console.error("Хадгалах үед алдаа гарлаа:", err);
@@ -419,12 +417,9 @@ const ProductAdmin = () => {
             setLoading(true); setError(null);
             const productId = products[index].id;
             try {
-                const response = await fetch(`${API_BASE}/${productId}`, { method: "DELETE" });
-
-                if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+                await apiClient.products.remove(productId);
 
                 showAlert("Амжилттай устгалаа.");
-                // After deleting, refresh the current page
                 fetchProducts(currentPage);
             } catch (err) {
                 console.error("Устгах үед алдаа гарлаа:", err);
@@ -454,16 +449,13 @@ const ProductAdmin = () => {
             const matches = [];
 
             do {
-                const response = await fetch(`${API_BASE}?page=${page}&size=${PAGE_SIZE_FOR_SEARCH}`);
-                if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
-                const data = await response.json();
+                const data = await apiClient.products.getPage(page, PAGE_SIZE_FOR_SEARCH);
                 totalPagesLocal = data.totalPages ?? 1;
 
                 const pageContent = Array.isArray(data.content) ? data.content : [];
                 const pageMatches = pageContent.filter(product => product.barcode === query);
                 if (pageMatches.length > 0) {
                     matches.push(...pageMatches);
-                    // Assuming barcode is unique, stop early
                     break;
                 }
                 page += 1;

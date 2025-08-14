@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import apiClient from '../../api/apiClient.jsx';
 
 // Mock component for AdminCategoryTable
 // In a real application, this would be a separate file and potentially more complex.
@@ -95,21 +96,16 @@ const CategoryAdmin = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // State for the custom modal (reused from ProductAdmin)
   const [modal, setModal] = useState({
     isOpen: false,
     title: "",
     message: "",
-    type: "alert", // 'alert' or 'confirm'
+    type: "alert",
     onConfirm: () => {},
     onCancel: () => {},
     onClose: () => {},
   });
 
-  // API base URL for categories
-  const API_BASE = "http://localhost:8080/api/category";
-
-  // Function to show custom alert modal
   const showAlert = useCallback((message, title = "Мэдээлэл") => {
     setModal({
       isOpen: true,
@@ -120,7 +116,6 @@ const CategoryAdmin = () => {
     });
   }, []);
 
-  // Function to show custom confirmation modal
   const showConfirm = useCallback((message, onConfirmCallback, title = "Баталгаажуулах") => {
     setModal({
       isOpen: true,
@@ -135,17 +130,12 @@ const CategoryAdmin = () => {
     });
   }, []);
 
-  // Fetch all categories from the API
   const fetchCategories = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(API_BASE);
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
-      const data = await response.json();
-      setCategories(data);
+      const data = await apiClient.categories.getAll();
+      setCategories(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("Ангилал татах үед алдаа гарлаа:", err);
       setError("Ангилал татах үед алдаа гарлаа. Сүлжээгээ шалгана уу.");
@@ -155,21 +145,16 @@ const CategoryAdmin = () => {
     }
   }, [showAlert]);
 
-  // Fetch categories on component mount
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+  useEffect(() => { fetchCategories(); }, [fetchCategories]);
 
-  // Handle input change for category form
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCurrentCategory((prev) => ({
       ...prev,
-      [name]: name === "id" || name === "sortID" ? (value === "" ? "" : Number(value)) : value,
+      [name]: value,
     }));
   };
 
-  // Save or update a category
   const handleSave = async () => {
     if ((currentCategory.name || "").trim() === "") {
       showAlert("Нэр талбаруудыг бөглөнө үү.");
@@ -178,25 +163,18 @@ const CategoryAdmin = () => {
 
     setLoading(true);
     setError(null);
-    const method = editingIndex !== null ? "PUT" : "POST";
-    const url = editingIndex !== null ? `${API_BASE}/${categories[editingIndex].id}` : API_BASE;
-
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(currentCategory),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
+      if (editingIndex !== null) {
+        await apiClient.categories.update(categories[editingIndex].id, { name: currentCategory.name });
+      } else {
+        await apiClient.categories.create({ name: currentCategory.name });
       }
 
       showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
       setFormVisible(false);
-      setCurrentCategory({ name: ""});
+      setCurrentCategory({ id: "", name: "" });
       setEditingIndex(null);
-      fetchCategories(); // Refresh the category list
+      fetchCategories();
     } catch (err) {
       console.error("Хадгалах үед алдаа гарлаа:", err);
       setError("Хадгалах үед алдаа гарлаа. Талбаруудыг шалгана уу.");
@@ -206,33 +184,22 @@ const CategoryAdmin = () => {
     }
   };
 
-  // Set category for editing
   const handleEdit = (index) => {
     const categoryToEdit = categories[index];
-    setCurrentCategory({
-      ...categoryToEdit,
-      id: categoryToEdit.id ?? "", // Ensure ID is set for input
-      sortID: categoryToEdit.sortID ?? "", // Handle null/undefined for sortID
-    });
+    setCurrentCategory({ id: categoryToEdit.id ?? "", name: categoryToEdit.name ?? "" });
     setEditingIndex(index);
     setFormVisible(true);
   };
 
-  // Delete a category
   const handleDelete = (index) => {
     showConfirm("Та энэ ангиллыг устгахдаа итгэлтэй байна уу?", async () => {
       setLoading(true);
       setError(null);
       const categoryId = categories[index].id;
       try {
-        const response = await fetch(`${API_BASE}/${categoryId}`, { method: "DELETE" });
-
-        if (!response.ok) {
-          throw new Error(`HTTP алдаа: ${response.status}`);
-        }
-
+        await apiClient.categories.remove(categoryId);
         showAlert("Амжилттай устгалаа.");
-        fetchCategories(); // Refresh the category list
+        fetchCategories();
       } catch (err) {
         console.error("Устгах үед алдаа гарлаа:", err);
         setError("Устгах үед алдаа гарлаа.");
@@ -250,27 +217,14 @@ const CategoryAdmin = () => {
       <style>
         {`
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-          body {
-            font-family: 'Inter', sans-serif;
-          }
-          .input-field {
-            border-radius: 0.375rem; /* rounded-md */
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            width: 100%;
-            border: 2px solid #D1D5DB; /* border-2 */
-            transition: all 0.2s ease-in-out;
-          }
-          .input-field:focus {
-            outline: none;
-            border-color: #3B82F6; /* focus:ring-blue-500 */
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); /* focus:ring-2 */
-          }
+          body { font-family: 'Inter', sans-serif; }
+          .input-field { border-radius: 0.375rem; padding: 0.5rem 1rem; width: 100%; border: 2px solid #D1D5DB; transition: all 0.2s ease-in-out; }
+          .input-field:focus { outline: none; border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3); }
         `}
       </style>
 
       <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Ангилал удирдах</h1>
 
-      {/* Loading Indicator */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
           <div className="flex items-center space-x-2 text-white text-lg">
@@ -283,19 +237,17 @@ const CategoryAdmin = () => {
         </div>
       )}
 
-      {/* Add Category Button */}
       <button
         onClick={() => {
           setFormVisible(!formVisible);
           setEditingIndex(null);
-          setCurrentCategory({ id: "", name: "", sortID: "" });
+          setCurrentCategory({ id: "", name: "" });
         }}
         className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md mb-6 shadow-md transition-colors"
       >
         {formVisible ? "Хаах" : "Ангилал нэмэх"}
       </button>
 
-      {/* Category Form */}
       {formVisible && (
         <div className="bg-white shadow-md rounded-lg p-6 space-y-4 mb-6">
           <h2 className="text-2xl font-semibold text-gray-800">
@@ -303,37 +255,15 @@ const CategoryAdmin = () => {
           </h2>
           <div>
             <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Нэр:</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={currentCategory.name}
-              onChange={handleChange}
-              className="input-field"
-            />
+            <input type="text" id="name" name="name" value={currentCategory.name} onChange={handleChange} className="input-field" />
           </div>
-          <button
-            onClick={handleSave}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md shadow-md transition-colors"
-          >
-            Хадгалах
-          </button>
+          <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md shadow-md transition-colors">Хадгалах</button>
         </div>
       )}
 
-      {/* Category Table */}
       <AdminCategoryTable categories={categories} onEdit={handleEdit} onDelete={handleDelete} />
 
-      {/* Custom Alert/Confirm Modal */}
-      <Modal
-        isOpen={modal.isOpen}
-        title={modal.title}
-        message={modal.message}
-        type={modal.type}
-        onConfirm={modal.onConfirm}
-        onCancel={modal.onCancel}
-        onClose={modal.onClose}
-      />
+      <Modal isOpen={modal.isOpen} title={modal.title} message={modal.message} type={modal.type} onConfirm={modal.onConfirm} onCancel={modal.onCancel} onClose={modal.onClose} />
     </div>
   );
 };

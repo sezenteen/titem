@@ -1,37 +1,22 @@
 ---
 // src/pages/admin/dashboard.astro
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import apiClient from '../../api/apiClient.jsx';
 
 // --- API Data Fetching Logic ---
-// We use a try/catch block to handle any potential network or API errors gracefully.
 let totalProductsCount = 0;
 let totalUsersCount = 0;
 let error = null;
 
 try {
-    // Fetch products data to get the total count.
-    // We assume the API returns a paginated object with 'totalElements'.
-    const productsResponse = await fetch('http://localhost:8080/api/product');
-    if (!productsResponse.ok) {
-        throw new Error('Failed to fetch products.');
-    }
-    const productsData = await productsResponse.json();
-    // Correctly get the total number of elements from the API response
-    totalProductsCount = productsData.totalElements || productsData.content.length;
+    const productsData = await apiClient.products.getPage(0, 1);
+    totalProductsCount = productsData.totalElements || (productsData.content?.length || 0);
 
-    // Fetch users data to get the total count.
-    // We assume the API returns a paginated object with 'totalElements'.
-    const usersResponse = await fetch('http://localhost:8080/api/admin/user');
-    if (!usersResponse.ok) {
-        throw new Error('Failed to fetch users.');
-    }
-    const usersData = await usersResponse.json();
-    // Correctly get the total number of elements from the API response
-    totalUsersCount = usersData.totalElements || usersData.content.length;
-
+    const usersData = await apiClient.users.getAll();
+    totalUsersCount = usersData.totalElements || (Array.isArray(usersData.content) ? usersData.content.length : Array.isArray(usersData) ? usersData.length : 0);
 } catch (e) {
-    console.error("API дуудахад алдаа гарлаа:", e);
-    error = "Мэдээлэл татаж чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.";
+    console.error("API дуудахад алдаа гарлаа:", e);
+    error = "Мэдээлэл татаж чадсангүй. Сервер ажиллаж байгаа эсэхийг шалгана уу.";
 }
 ---
 

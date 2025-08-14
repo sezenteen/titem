@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import apiClient from "../api/apiClient.jsx";
 
 const PAGE_SIZE = 24;
 const url = new URL(Astro.request.url);
@@ -12,12 +13,9 @@ let totalPages = 1;
 let error: string | null = null;
 
 try {
-  const base = categoryID
-    ? `http://localhost:8080/api/product/cat/${categoryID}?page=${page - 1}&size=${PAGE_SIZE}`
-    : `http://localhost:8080/api/product?page=${page - 1}&size=${PAGE_SIZE}`;
-  const res = await fetch(base);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
+  const data = categoryID
+    ? await apiClient.products.getByCategoryId(categoryID, page - 1, PAGE_SIZE)
+    : await apiClient.products.getPage(page - 1, PAGE_SIZE);
   products = Array.isArray(data.content) ? data.content : [];
   totalPages = Math.max(1, data.totalPages || 1);
 } catch (e) {

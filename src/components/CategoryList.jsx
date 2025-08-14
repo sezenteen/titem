@@ -1,11 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import axios from 'axios';
-
-const slugify = (name) =>
-  encodeURIComponent(String(name || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '-'));
+import apiClient from '../api/apiClient.jsx';
 
 const CategoryList = () => {
   const [categories, setCategories] = useState([]);
@@ -14,55 +8,24 @@ const CategoryList = () => {
 
   useEffect(() => {
     const controller = new AbortController();
-    const load = async () => {
+    (async () => {
       try {
         setLoading(true);
         setError(null);
-        const res = await fetch('http://localhost:8080/api/category', { signal: controller.signal });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
+        const data = await apiClient.categories.getAll();
         setCategories(Array.isArray(data) ? data : []);
       } catch (err) {
-        if (err.name !== 'AbortError') {
-          setError('Категори татахад алдаа гарлаа.');
-        }
+        setError('Категори татахад алдаа гарлаа.');
       } finally {
         setLoading(false);
       }
-    };
-    load();
+    })();
     return () => controller.abort();
-  }, []);
-
-  // Added: axios request per provided snippet (runs once on mount)
-  useEffect(() => {
-    const data = '{\r\n  "name": "John Doe",\r\n  "register": "XYZ12345678",\r\n  "email": "john.doe@example.com",\r\n  "description": "This is an example customer description."\r\n}';
-
-    const config = {
-      method: 'get',
-      maxBodyLength: Infinity,
-      url: 'http://localhost:8080/api/product',
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      data,
-    };
-
-    axios.request(config)
-      .then((response) => {
-        // Log the API response as requested
-        // eslint-disable-next-line no-console
-        console.log(JSON.stringify(response.data));
-      })
-      .catch((err) => {
-        // eslint-disable-next-line no-console
-        console.log(err);
-      });
   }, []);
 
   const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
 
-  const items = useMemo(() => categories.map((c) => ({ ...c, slug: slugify(c.name) })), [categories]);
+  const items = useMemo(() => categories.map((c) => ({ ...c })), [categories]);
 
   if (loading) {
     return (
@@ -78,14 +41,6 @@ const CategoryList = () => {
     return (
       <div className="flex items-center gap-2 text-red-600 text-sm py-2" role="alert">
         <span>{error}</span>
-        <button
-          onClick={() => {
-            window.location.reload();
-          }}
-          className="px-2 py-1 bg-red-600 text-white rounded-md text-xs"
-        >
-          Дахин оролдох
-        </button>
       </div>
     );
   }

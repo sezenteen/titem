@@ -55,6 +55,9 @@ const products = {
 
 const categories = {
   getAll: () => api.get('/category').then(r => r.data),
+  create: (payload) => api.post('/category', payload).then(r => r.data),
+  update: (id, payload) => api.put(`/category/${id}`, payload).then(r => r.data),
+  remove: (id) => api.delete(`/category/${id}`).then(r => r.data),
 };
 
 const users = {

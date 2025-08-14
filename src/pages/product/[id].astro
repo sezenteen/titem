@@ -1,15 +1,12 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
-
-const API_BASE = 'http://localhost:8080/api';
+import apiClient from '../../api/apiClient.jsx';
 
 // Try to pre-generate some product pages (optional, safe fallback)
 export async function getStaticPaths() {
   try {
-    const res = await fetch(`${API_BASE}/product?page=0&size=20`);
-    if (!res.ok) throw new Error('Failed to fetch products');
-    const data = await res.json();
+    const data = await apiClient.products.getPage(0, 20);
     const items = Array.isArray(data.content) ? data.content : [];
     return items.map((p: any) => ({ params: { id: String(p.id) } }));
   } catch (e) {
@@ -24,9 +21,7 @@ const { id } = Astro.params;
 let product: any = null;
 let error: string | null = null;
 try {
-  const res = await fetch(`${API_BASE}/product/${id}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  product = await res.json();
+  product = await apiClient.products.getById(id);
 } catch (e) {
   console.error('Failed to load product:', e);
   error = 'Бүтээгдэхүүний мэдээлэл татаж чадсангүй.';
@@ -35,8 +30,8 @@ try {
 // Fetch categories to derive category name
 let categories: Array<{ id: number; name: string }> = [];
 try {
-  const cres = await fetch(`${API_BASE}/category`);
-  if (cres.ok) categories = await cres.json();
+  const data = await apiClient.categories.getAll();
+  categories = Array.isArray(data) ? data : [];
 } catch {}
 
 function getCategoryNameById(cid?: number) {
@@ -53,11 +48,8 @@ function slugify(name: string) {
 let related: any[] = [];
 try {
   if (product?.categoryID?.id) {
-    const rres = await fetch(`${API_BASE}/product/cat/${product.categoryID.id}?page=0&size=8`);
-    if (rres.ok) {
-      const rdata = await rres.json();
-      related = Array.isArray(rdata.content) ? rdata.content.filter((p: any) => p && p.id !== product.id) : [];
-    }
+    const d = await apiClient.products.getByCategoryId(product.categoryID.id, 0, 8);
+    related = Array.isArray(d.content) ? d.content.filter((p: any) => p && p.id !== product.id) : [];
   }
 } catch {}
 ---
