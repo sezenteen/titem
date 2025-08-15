@@ -132,6 +132,7 @@ if (totalPages > 1) {
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {products.map((product: any) => (
                 <ProductCard product={product} />
+
               ))}
             </div>
 
@@ -145,8 +146,7 @@ if (totalPages > 1) {
           </>
         ) : (
           <div class="text-center py-12">
-            <p class="text-xl text-gray-600">Одоогоор энэ ангилалд бүтээгдэхүүн байхгүй байна.</p>
-            <p class="text-gray-500 mt-2">Дараарай дахин шалгана уу эсвэл өөр ангилал сонгоно уу.</p>
+            <getByCategoryId class="text-xl text-gray-500">Энэ ангилалд бүтээгдэхүүн байхгүй байна.</getByCategoryId>
           </div>
         )}
       </div>

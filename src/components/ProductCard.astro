@@ -10,34 +10,23 @@ interface Props {
 }
 
 const { product } = Astro.props as { product: Props };
-
-// Derive robust fields from various backend shapes
-const raw: any = product as any;
-const prodId = raw?.id ?? raw?.productId ?? raw?.productID;
-const prodName = raw?.name ?? raw?.productName ?? 'Бүтээгдэхүүн';
-const prodShort = raw?.shortName ?? raw?.short_name ?? '';
-const prodImage = raw?.imagePath ?? raw?.imageUrl ?? raw?.image ?? 'https://placehold.co/600x400/E5E7EB/6B7280?text=No+Image';
-const prodPrice = raw?.price ?? '-';
-
-// Support both numeric categoryId and nested categoryID/category objects
-const derivedCategoryId: number | null = (raw?.categoryId ?? raw?.categoryID?.id ?? raw?.category?.id) ?? null;
-const derivedCategoryName: string | null = raw?.categoryName ?? raw?.categoryID?.name ?? raw?.category?.name ?? null;
+const displayImage = product.imagePath || 'https://placehold.co/600x400/E5E7EB/6B7280?text=No+Image';
+const displayShort = product.shortName || '';
+const displayPrice = product.price ?? '-';
 ---
 <div class="bg-white shadow rounded-lg overflow-hidden">
-  <img src={prodImage} alt={prodName} class="w-full h-48 object-cover" />
+  <img src={displayImage} alt={product.name} class="w-full h-48 object-cover" />
   <div class="p-4">
-    <h2 class="text-base sm:text-lg font-semibold text-gray-900 truncate">{prodName}</h2>
-    {prodShort && <p class="text-sm text-gray-600 truncate">{prodShort}</p>}
-    {(derivedCategoryName || derivedCategoryId) && (
+    <h2 class="text-base sm:text-lg font-semibold text-gray-900 truncate">{product.name}</h2>
+    {displayShort && <p class="text-sm text-gray-600 truncate">{displayShort}</p>}
+    {(product.categoryName || product.categoryId) && (
       <p class="mt-1 text-xs text-gray-500">
-        Ангилал: {derivedCategoryId ? <a href={`/category/${derivedCategoryId}`} class="hover:text-[#f7941e] underline">{derivedCategoryName || `ID ${derivedCategoryId}`}</a> : (derivedCategoryName)}
+        Ангилал: {product.categoryName || `ID ${product.categoryId}`}
       </p>
     )}
-    <p class="mt-2 text-gray-800">Үнэ: {prodPrice}{typeof prodPrice === 'number' ? ' ₮' : ''}</p>
-    {prodId && (
-      <a href={`/product/${prodId}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
-        Дэлгэрэнгүй
-      </a>
-    )}
+    <p class="mt-2 text-gray-800">Үнэ: {displayPrice}{typeof displayPrice === 'number' ? ' ₮' : ''}</p>
+    <a href={`/product/${product.id}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
+      Дэлгэрэнгүй
+    </a>
   </div>
 </div>
