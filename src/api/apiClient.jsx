@@ -36,7 +36,7 @@ const buildPageParams = (page = 0, size = 20) => ({ params: { page, size } });
 // Endpoints
 const products = {
   getPage: (page = 0, size = 20) => api.get('/product', buildPageParams(page, size)).then(r => r.data),
-  getById: (id) => api.get(`/product/${id}`).then(r => r.data),
+  getById: (id) => api.get(`/product/id/${id}`).then(r => r.data), // ⭐ Corrected URL path
   getByCategoryId: (categoryId, page = 0, size = 20) => api.get(`/product/category/${categoryId}`, buildPageParams(page, size)).then(r => r.data),
   create: (payload) => api.post('/product', payload).then(r => r.data),
   update: (id, payload) => api.put(`/product/${id}`, payload).then(r => r.data),
@@ -51,14 +51,14 @@ const products = {
     }
     return null;
   },
- 
+  
 };
 
 const categories = {
   getAll: () => api.get('/category').then(r => r.data),
   create: (payload) => api.post('/category', payload).then(r => r.data),
   update: (id, payload) => api.put(`/category/${id}`, payload).then(r => r.data),
-  remove: (id) => api.delete(`/category/${id}`).then(r => r.data),
+  remove: (id) => api.delete('/category/${id}').then(r => r.data),
 };
 
 const users = {
