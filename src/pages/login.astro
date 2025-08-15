@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import authClient from "../lib/apiClient.jsx";
 
 const primaryBlue = '#004AAD'; // A slightly more vibrant blue
 const accentCyan = '#00C2CB'; // A complementary accent color
@@ -210,28 +211,22 @@ const textDark = '#212529'; // Darker text for better contrast
                     loginButton.classList.add("opacity-75", "cursor-not-allowed");
 
                     try {
-                        const response = await fetch("http://localhost:5000/login", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({ email, password })
-                        });
+                        const response = await authClient.post("/login", { email, password });
 
-                        if (response.ok) {
-                            const data = await response.json();
+                        if (response.status >= 200 && response.status < 300) {
+                            const data = response.data;
                             loginMessageElement.textContent = "✅ Амжилттай нэвтэрлээ!";
                             loginMessageElement.style.color = "green";
                             localStorage.setItem("token", data.token);
                             setTimeout(() => window.location.href = "/", 1500);
                         } else {
-                            const errorData = await response.json();
-                            loginMessageElement.textContent = `❌ Алдаа: ${errorData.message || response.statusText}`;
+                            loginMessageElement.textContent = `❌ Алдаа: ${response.statusText}`;
                             loginMessageElement.style.color = "red";
                         }
                     } catch (error) {
                         console.error("Login failed:", error);
-                        loginMessageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+                        const message = error?.response?.data?.message || "Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+                        loginMessageElement.textContent = `❌ ${message}`;
                         loginMessageElement.style.color = "red";
                     } finally {
                         loginButton.disabled = false;
@@ -283,20 +278,13 @@ const textDark = '#212529'; // Darker text for better contrast
                 }
             });
 
-            // Handle register form submission
-            registerForm.addEventListener("submit", async function (event) {
+            // Handle form submission for registration
+            registerForm.addEventListener("submit", async function(event) {
                 event.preventDefault();
 
                 const email = registerEmailInput.value.trim();
                 const password = registerPasswordInput.value.trim();
                 const confirmPassword = registerConfirmPasswordInput.value.trim();
-
-                // Basic client-side validation
-                if (password !== confirmPassword) {
-                    registerMessageElement.textContent = "❌ Нууц үгнүүд таарахгүй байна!";
-                    registerMessageElement.style.color = "red";
-                    return;
-                }
 
                 registerMessageElement.textContent = "";
                 registerMessageElement.style.color = textDark;
@@ -304,37 +292,40 @@ const textDark = '#212529'; // Darker text for better contrast
                 registerButton.textContent = "Бүртгүүлж байна...";
                 registerButton.classList.add("opacity-75", "cursor-not-allowed");
 
-                try {
-                    const response = await fetch("http://localhost:5000/register", { // Assuming a /register endpoint
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
+                if (password.length < 6) {
+                    registerMessageElement.textContent = "❌ Нууц үг дор хаяж 6 тэмдэгтээс тогтоно!";
+                    registerMessageElement.style.color = "red";
+                    registerButton.disabled = false;
+                    registerButton.textContent = "Бүртгүүлэх";
+                    registerButton.classList.remove("opacity-75", "cursor-not-allowed");
+                    return;
+                }
 
-                    if (response.ok) {
-                        const data = await response.json();
-                        registerMessageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Одоо нэвтэрнэ үү.";
+                if (password !== confirmPassword) {
+                    registerMessageElement.textContent = "❌ Нууц үгнүүд таарахгүй байна!";
+                    registerMessageElement.style.color = "red";
+                    registerButton.disabled = false;
+                    registerButton.textContent = "Бүртгүүлэх";
+                    registerButton.classList.remove("opacity-75", "cursor-not-allowed");
+                    return;
+                }
+
+                try {
+                    const response = await authClient.post("/register", { email, password });
+
+                    if (response.status >= 200 && response.status < 300) {
+                        registerMessageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Одоо нэвтрэх хуудас руу шилжинэ үү.";
                         registerMessageElement.style.color = "green";
-                        registerForm.reset(); // Clear form after successful registration
-                        // Optionally, auto-close popover after a delay
-                        setTimeout(() => {
-                            registerPopover.classList.add("hidden");
-                            document.body.style.overflow = "";
-                            // Optionally, pre-fill login form with registered email
-                            if (emailInput) {
-                                (emailInput as HTMLInputElement).value = email;
-                            }
-                        }, 2000);
+                        registerForm.reset(); // Clear the form
+                        setTimeout(() => window.location.href = "/login", 2000);
                     } else {
-                        const errorData = await response.json();
-                        registerMessageElement.textContent = `❌ Алдаа: ${errorData.message || response.statusText}`;
+                        registerMessageElement.textContent = `❌ Алдаа: ${response.statusText}`;
                         registerMessageElement.style.color = "red";
                     }
                 } catch (error) {
                     console.error("Registration failed:", error);
-                    registerMessageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+                    const message = error?.response?.data?.message || 'Бүртгүүлэхэд алдаа гарлаа.';
+                    registerMessageElement.textContent = `❌ Алдаа: ${message}`;
                     registerMessageElement.style.color = "red";
                 } finally {
                     registerButton.disabled = false;
@@ -343,13 +334,6 @@ const textDark = '#212529'; // Darker text for better contrast
                 }
             });
         });
-
-        // Simple toggle for any sidebar if toggleBtn exists - kept from original
-        function toggleSidebar() {
-            console.log("Toggle sidebar function called.");
-            // Implement your sidebar toggling logic here.
-            // This might involve manipulating classes on a parent element or a dedicated sidebar component.
-        }
     </script>
 
     <style is:global>

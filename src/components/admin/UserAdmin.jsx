@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import apiClient from '../../lib/apiClient.jsx';
 
 // Mock component for AdminUserTable
 // In a real application, this would be a separate file and potentially more complex.
@@ -102,7 +103,7 @@ const UserAdmin = () => {
   });
 
   // API base URL for users
-  const API_BASE = "http://localhost:8080/api/admin/user";
+  const API_BASE = "/admin/user";
 
   // Function to show custom alert modal
   const showAlert = useCallback((message, title = "Мэдээлэл") => {
@@ -135,11 +136,8 @@ const UserAdmin = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(API_BASE);
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await apiClient.get(API_BASE);
+      const data = response.data;
       setUsers(data);
     } catch (err) {
       console.error("Хэрэглэгч татах үед алдаа гарлаа:", err);
@@ -182,15 +180,7 @@ const UserAdmin = () => {
     const url = editingIndex !== null ? `${API_BASE}/${users[editingIndex].id}` : API_BASE;
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(currentUser),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
+      await apiClient({ url, method, data: currentUser });
 
       showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
       setFormVisible(false);
@@ -225,11 +215,7 @@ const UserAdmin = () => {
       setError(null);
       const userId = users[index].id;
       try {
-        const response = await fetch(`${API_BASE}/${userId}`, { method: "DELETE" });
-
-        if (!response.ok) {
-          throw new Error(`HTTP алдаа: ${response.status}`);
-        }
+        await apiClient.delete(`${API_BASE}/${userId}`);
 
         showAlert("Амжилттай устгалаа.");
         fetchUsers(); // Refresh the user list

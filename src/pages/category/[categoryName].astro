@@ -1,14 +1,14 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
+import apiClient from '../../lib/apiClient.jsx';
 
 // Build-time paths for categories
 export async function getStaticPaths() {
     let categories = [];
     try {
-        const response = await fetch('http://localhost:8080/api/category');
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        categories = await response.json();
+        const response = await apiClient.get('/category');
+        categories = response.data;
     } catch (error) {
         console.error("Error fetching categories for static paths:", error);
         return [];
@@ -34,13 +34,9 @@ let totalPages = 0;
 
 try {
     // Backend pagination: page is 0-indexed in Spring
-    const productsResponse = await fetch(
-        `http://localhost:8080/api/product/cat/${categoryId}?page=${page - 1}&size=${PAGE_SIZE}`
-    );
+    const productsResponse = await apiClient.get(`/product/cat/${categoryId}?page=${page - 1}&size=${PAGE_SIZE}`);
 
-    if (!productsResponse.ok) throw new Error(`HTTP error! status: ${productsResponse.status}`);
-
-    const data = await productsResponse.json();
+    const data = productsResponse.data;
 
     // Spring Data returns { content, totalElements, totalPages, ... }
     products = data.content.filter((product: any) => product && product.imagePath);

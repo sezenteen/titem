@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import apiClient from '../../lib/apiClient.jsx';
 
 // Custom Modal Component to replace native alert/confirm
 // Reused from other admin components for consistent UI
@@ -58,7 +59,7 @@ const SettingsAdmin = () => {
   });
 
   // Mock API base URL for settings (replace with your actual backend endpoint)
-  const API_BASE = "http://localhost:8080/api/settings";
+  const API_BASE = "/settings";
 
   // Function to show custom alert modal
   const showAlert = useCallback((message, title = "Мэдээлэл") => {
@@ -77,11 +78,8 @@ const SettingsAdmin = () => {
     setError(null);
     try {
       // Simulate fetching settings. In a real app, this would be a GET request.
-      const response = await fetch(API_BASE);
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await apiClient.get(API_BASE);
+      const data = response.data;
       setSettings(data);
     } catch (err) {
       console.error("Тохиргоо татах үед алдаа гарлаа:", err);
@@ -112,15 +110,7 @@ const SettingsAdmin = () => {
     setError(null);
     try {
       // Simulate saving settings. In a real app, this would be a PUT/POST request.
-      const response = await fetch(API_BASE, {
-        method: "PUT", // Or POST, depending on your API design
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
+      await apiClient.put(API_BASE, settings);
 
       showAlert("Тохиргоо амжилттай хадгалагдлаа.");
     } catch (err) {

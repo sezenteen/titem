@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import apiClient from '../lib/apiClient.jsx';
 
 const Product = () => {
   const [productData, setProductData] = useState();
@@ -8,7 +8,7 @@ const Product = () => {
   useEffect(() => {
     // We will use a GET request without a body to fetch data.
     // The URL should point to your API endpoint for products.
-    axios.get('http://localhost:8080/api/product')
+    apiClient.get('/product')
       .then(response => {
         setProductData(response.data);
       })

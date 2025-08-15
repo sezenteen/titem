@@ -1,46 +1,27 @@
-# Astro Starter Kit: Basics
+# Titem
 
-```sh
-npm create astro@latest -- --template basics
+This project uses Astro with React components.
+
+## Development
+
+- Run dev server: `npm run dev`
+- Build: `npm run build`
+- Preview: `npm run preview`
+
+## API configuration
+
+All API requests are routed through a centralized Axios client at `src/lib/apiClient.jsx`.
+
+Environment variables (public) control base URLs:
+
+- `PUBLIC_API_BASE_URL`: defaults to `http://localhost:8080/api`
+- `PUBLIC_AUTH_BASE_URL`: defaults to `http://localhost:5000`
+
+Create a `.env` file in the project root if needed, e.g.:
+
+```
+PUBLIC_API_BASE_URL=http://localhost:8080/api
+PUBLIC_AUTH_BASE_URL=http://localhost:5000
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
-```
-
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+The client automatically attaches `Authorization: Bearer <token>` if `localStorage.token` is present (on the client).

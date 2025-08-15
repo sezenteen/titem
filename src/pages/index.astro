@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
+import apiClient from "../lib/apiClient.jsx";
 
 const PAGE_SIZE = 20; // products per page
 const url = new URL(Astro.request.url);
@@ -13,10 +14,8 @@ let error = null;
 
 // Fetch paginated products from backend
 try {
-    const response = await fetch(`http://localhost:8080/api/product?page=${page - 1}&size=${PAGE_SIZE}`);
-    if (!response.ok) throw new Error(`HTTP алдаа! статус: ${response.status}`);
-
-    const data = await response.json();
+    const response = await apiClient.get(`/product?page=${page - 1}&size=${PAGE_SIZE}`);
+    const data = response.data;
     products = data.content || [];
     totalProducts = data.totalElements || 0;
     totalPages = data.totalPages || 0;

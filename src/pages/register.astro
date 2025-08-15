@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import authClient from "../lib/apiClient.jsx";
 
 // Define custom colors if not already in your tailwind.config.cjs
 const primaryBlue = '#004AAD';
@@ -118,33 +119,21 @@ const textDark = '#212529';
                 registerButton.classList.add("opacity-75", "cursor-not-allowed");
 
                 try {
-                    // This is a placeholder API call.
-                    // In a real application, you'd send a request to your backend
-                    // to create a new user account.
-                    const response = await fetch("http://localhost:5000/register", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
+                    const response = await authClient.post("/register", { email, password });
 
-                    if (response.ok) {
-                        const data = await response.json(); // Assuming your backend sends some data on success
+                    if (response.status >= 200 && response.status < 300) {
                         messageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Одоо нэвтрэх хуудас руу шилжинэ үү.";
                         messageElement.style.color = "green";
                         form.reset(); // Clear the form
-                        // Optionally redirect to login page after a delay
                         setTimeout(() => window.location.href = "/login", 2000);
                     } else {
-                        // Assuming the backend sends a JSON error message
-                        const errorData = await response.json();
-                        messageElement.textContent = `❌ Алдаа: ${errorData.message || 'Бүртгүүлэхэд алдаа гарлаа.'}`;
+                        messageElement.textContent = `❌ Алдаа: ${response.statusText || 'Бүртгүүлэхэд алдаа гарлаа.'}`;
                         messageElement.style.color = "red";
                     }
                 } catch (error) {
                     console.error("Registration request failed:", error);
-                    messageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+                    const message = error?.response?.data?.message || 'Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.';
+                    messageElement.textContent = `❌ ${message}`;
                     messageElement.style.color = "red";
                 } finally {
                     registerButton.disabled = false;

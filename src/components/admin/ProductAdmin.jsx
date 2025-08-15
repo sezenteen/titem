@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from 'react-dom';
 import Quagga from "quagga";
+import apiClient from '../../lib/apiClient.jsx';
 
 // A mock component for AdminProductTable.
 // This displays the list of products in a responsive table format.
@@ -249,7 +250,7 @@ const ProductAdmin = () => {
     });
 
     // NOTE: The API_BASE is hardcoded. In a real application, this should be configurable.
-    const API_BASE = "http://localhost:8080/api/product";
+    const API_BASE = "/product";
 
     const showAlert = useCallback((message, title = "Мэдээлэл") => {
         setModal({
@@ -274,9 +275,8 @@ const ProductAdmin = () => {
     const fetchProducts = useCallback(async (page = 0) => {
         setLoading(true); setError(null);
         try {
-            const response = await fetch(`${API_BASE}?page=${page}&size=${PAGE_SIZE}`);
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
-            const data = await response.json();
+            const response = await apiClient.get(`${API_BASE}?page=${page}&size=${PAGE_SIZE}`);
+            const data = response.data;
             setProducts(data.content);
             setCurrentPage(data.number); // Update current page from API response
             setTotalPages(data.totalPages); // Update total pages from API response
@@ -338,12 +338,7 @@ const ProductAdmin = () => {
         const url = editingIndex !== null ? `${API_BASE}/${products[editingIndex].id}` : API_BASE;
 
         try {
-            const response = await fetch(url, {
-                method, headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(currentProduct),
-            });
-
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+            const response = await apiClient({ url, method, data: currentProduct });
 
             showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
             setFormVisible(false);
@@ -385,9 +380,7 @@ const ProductAdmin = () => {
             setLoading(true); setError(null);
             const productId = products[index].id;
             try {
-                const response = await fetch(`${API_BASE}/${productId}`, { method: "DELETE" });
-
-                if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
+                await apiClient.delete(`${API_BASE}/${productId}`);
 
                 showAlert("Амжилттай устгалаа.");
                 // After deleting, refresh the current page
@@ -417,9 +410,8 @@ const ProductAdmin = () => {
         try {
             // Fetch a large number of products for local filtering.
             // NOTE: A more scalable solution would be to implement a search endpoint on the backend.
-            const response = await fetch(`${API_BASE}?page=0&size=1000`);
-            if (!response.ok) { throw new Error(`HTTP алдаа: ${response.status}`); }
-            const data = await response.json();
+            const response = await apiClient.get(`${API_BASE}?page=0&size=1000`);
+            const data = response.data;
             const allProducts = data.content;
 
             // Filter the products based on the barcode from the search input

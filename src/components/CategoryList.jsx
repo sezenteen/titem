@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import apiClient from '../lib/apiClient.jsx';
 
 const CategoryList = () => {
     const [categories, setCategories] = useState([]);
@@ -9,7 +9,7 @@ const CategoryList = () => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const response = await axios.get('http://localhost:8080/api/category');
+                const response = await apiClient.get('/category');
                 setCategories(response.data);
                 setLoading(false);
             } catch (err) {

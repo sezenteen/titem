@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import apiClient from '../../lib/apiClient.jsx';
 
 // Mock component for AdminCategoryTable
 // In a real application, this would be a separate file and potentially more complex.
@@ -98,7 +99,7 @@ const CategoryAdmin = () => {
   });
 
   // API base URL for categories
-  const API_BASE = "http://localhost:8080/api/category";
+  const API_BASE = "/category";
 
   // Function to show custom alert modal
   const showAlert = useCallback((message, title = "Мэдээлэл") => {
@@ -131,11 +132,8 @@ const CategoryAdmin = () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(API_BASE);
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await apiClient.get(API_BASE);
+      const data = response.data;
       setCategories(data);
     } catch (err) {
       console.error("Ангилал татах үед алдаа гарлаа:", err);
@@ -173,15 +171,7 @@ const CategoryAdmin = () => {
     const url = editingIndex !== null ? `${API_BASE}/${categories[editingIndex].id}` : API_BASE;
 
     try {
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(currentCategory),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
+      await apiClient({ url, method, data: currentCategory });
 
       showAlert(editingIndex !== null ? "Амжилттай шинэчиллээ." : "Амжилттай хадгаллаа.");
       setFormVisible(false);
@@ -216,11 +206,7 @@ const CategoryAdmin = () => {
       setError(null);
       const categoryId = categories[index].id;
       try {
-        const response = await fetch(`${API_BASE}/${categoryId}`, { method: "DELETE" });
-
-        if (!response.ok) {
-          throw new Error(`HTTP алдаа: ${response.status}`);
-        }
+        await apiClient.delete(`${API_BASE}/${categoryId}`);
 
         showAlert("Амжилттай устгалаа.");
         fetchCategories(); // Refresh the category list

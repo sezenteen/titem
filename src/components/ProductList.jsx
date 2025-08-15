@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import apiClient from '../lib/apiClient.jsx';
 
 // This is a placeholder for a React version of ProductCard.astro
 // In a real application, this would be in its own file: `src/components/ProductCard.jsx`
@@ -44,11 +45,8 @@ const ProductList = () => {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/product');
-      if (!response.ok) {
-        throw new Error(`HTTP алдаа: ${response.status}`);
-      }
-      const data = await response.json();
+      const response = await apiClient.get('/product');
+      const data = response.data;
       setProducts(data);
     } catch (err) {
       console.error(err);
