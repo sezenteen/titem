@@ -7,7 +7,7 @@ const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && impor
 const api = axios.create({
   baseURL: API_BASE,
   timeout: 15000,
-  headers: {
+  headers: { 
     'Content-Type': 'application/json',
   },
   maxBodyLength: Infinity,
