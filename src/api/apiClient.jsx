@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base URL configuration with fallback
-const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PUBLIC_API_BASE) || 'http://localhost:8080/api';
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PUBLIC_API_BASE) || 'http://titemplaza.mn:8080/api';
 
 // Create axios instance
 const api = axios.create({
