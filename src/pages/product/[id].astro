@@ -3,19 +3,38 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import apiClient from '../../api/apiClient.jsx';
 
 // Function to generate static paths for your products
-// This is optional but good for SEO and performance
+// This version fetches all products across all pages
 export async function getStaticPaths() {
-  const allProducts = await apiClient.products.getPage(0, 1000); // Fetch a large number of products
-  if (!allProducts.content) {
-    console.error("No products found for static paths.");
-    return [];
+  const allPaths = [];
+  let page = 0;
+  let totalPages = 1; // Start with 1 to enter the loop
+
+  while (page < totalPages) {
+    try {
+      // Fetch a page of products (using a larger size for efficiency)
+      const data = await apiClient.products.getPage(page, 500);
+      
+      if (data && data.content) {
+        // Map products on the current page to their paths
+        const pagePaths = data.content.map(product => ({
+          params: { id: String(product.id) }
+        }));
+        allPaths.push(...pagePaths);
+
+        // Update totalPages for the next loop
+        totalPages = data.totalPages;
+        page++; // Move to the next page
+      } else {
+        console.error("No products found for static paths.");
+        break; // Exit the loop if no data is returned
+      }
+    } catch (e) {
+      console.error(`Error fetching products for static paths on page ${page}:`, e);
+      break;
+    }
   }
-  return allProducts.content.map(product => {
-    // Return a path for each product ID
-    return {
-      params: { id: String(product.id) }
-    };
-  });
+
+  return allPaths;
 }
 
 // Get the product ID from the URL parameters

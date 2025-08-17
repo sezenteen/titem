@@ -5,24 +5,26 @@ import apiClient from '../../api/apiClient.jsx';
 
 // Build-time paths for categories by ID
 export async function getStaticPaths() {
-  let categories = [];
-  try {
-    const data = await apiClient.categories.getAll();
-    categories = Array.isArray(data) ? data : [];
-  } catch (error) {
-    console.error('Error fetching categories for static paths (by ID):', error);
-    return [];
-  }
+  let categories = [];
+  try {
+    const data = await apiClient.categories.getAll();
+    // Ensure data is a valid array before proceeding
+    categories = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('Error fetching categories for static paths (by ID):', error);
+    // If fetching fails, return an empty array so Astro doesn't crash
+    return [];
+  }
 
-  return categories.map((category: { id: number; name: string }) => ({
-    params: { categoryID: String(category.id) },
-    props: { categoryId: category.id, categoryTitle: category.name },
-  }));
+  return categories.map((category) => ({
+    params: { categoryID: String(category.id) },
+    props: { categoryId: category.id, categoryTitle: category.name },
+  }));
 }
 
 const { categoryID } = Astro.params;
 const { categoryId, categoryTitle } = Astro.props;
-const resolvedCategoryId: number = typeof categoryId === 'number' ? categoryId : Number(categoryID);
+const resolvedCategoryId = typeof categoryId === 'number' ? categoryId : Number(categoryID);
 
 // Pagination setup
 const PAGE_SIZE = 12;
@@ -34,122 +36,121 @@ let totalProducts = 0;
 let totalPages = 0;
 
 try {
-  const data = await apiClient.products.getByCategoryId(resolvedCategoryId, page - 1, PAGE_SIZE);
-  products = Array.isArray(data.content) ? data.content : [];
-  totalProducts = data.totalElements || 0;
-  totalPages = data.totalPages || 0;
+  const data = await apiClient.products.getByCategoryId(resolvedCategoryId, page - 1, PAGE_SIZE);
+  products = Array.isArray(data.content) ? data.content : [];
+  totalProducts = data.totalElements || 0;
+  totalPages = data.totalPages || 0;
 } catch (error) {
-  console.error(`Error fetching paginated products for category ${resolvedCategoryId}:`, error);
-  products = [];
+  console.error(`Error fetching paginated products for category ${resolvedCategoryId}:`, error);
+  products = [];
 }
 
 // Fetch categories for sidebar
 let sidebarCategories: Array<{ id: number; name: string }> = [];
 try {
-  const data = await apiClient.categories.getAll();
-  sidebarCategories = Array.isArray(data) ? data : [];
+  const data = await apiClient.categories.getAll();
+  sidebarCategories = Array.isArray(data) ? data : [];
 } catch (e) {
-  console.error('Error fetching categories for sidebar:', e);
+  console.error('Error fetching categories for sidebar:', e);
 }
 
 function getPageUrl(p: number) {
-  return `/category/${categoryID}?page=${p}`;
+  return `/category/${categoryID}?page=${p}`;
 }
 
 // Generate page numbers with ellipsis
 const pageRange = 2;
 const pages = [];
 if (totalPages > 1) {
-  if (page > pageRange + 1) {
-    pages.push(1);
-    pages.push('...');
-  }
-  for (let i = Math.max(1, page - pageRange); i <= Math.min(totalPages, page + pageRange); i++) pages.push(i);
-  if (page < totalPages - pageRange) {
-    if (page < totalPages - pageRange - 1) pages.push('...');
-    pages.push(totalPages);
-  }
+  if (page > pageRange + 1) {
+    pages.push(1);
+    pages.push('...');
+  }
+  for (let i = Math.max(1, page - pageRange); i <= Math.min(totalPages, page + pageRange); i++) pages.push(i);
+  if (page < totalPages - pageRange) {
+    if (page < totalPages - pageRange - 1) pages.push('...');
+    pages.push(totalPages);
+  }
 }
 ---
 
 <BaseLayout title={(categoryTitle || (sidebarCategories.find(c => c.id === resolvedCategoryId)?.name)) ? `${categoryTitle || sidebarCategories.find(c => c.id === resolvedCategoryId)?.name} Ангилал` : `Ангилал`}>
-  <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex items-center justify-between mb-4 lg:mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || sidebarCategories.find(c => c.id === resolvedCategoryId)?.name || 'Ангилал'}</h1>
-      <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
-        Ангилал
-      </button>
-    </div>
+  <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex items-center justify-between mb-4 lg:mb-6">
+      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || sidebarCategories.find(c => c.id === resolvedCategoryId)?.name || 'Ангилал'}</h1>
+      <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
+        Ангилал
+      </button>
+    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Sidebar -->
-      <aside class="lg:col-span-3">
-        <!-- Desktop sidebar -->
-        <div class="hidden lg:block sticky top-24 max-h-[70vh] overflow-y-auto pr-2">
-          <nav aria-label="Category list" class="space-y-1">
-            {sidebarCategories.length > 0 ? (
-              sidebarCategories.map((cat) => (
-                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
-              ))
-            ) : (
-              <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
-            )}
-          </nav>
-        </div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <!-- Sidebar -->
+      <aside class="lg:col-span-3">
+        <!-- Desktop sidebar -->
+        <div class="hidden lg:block sticky top-24 max-h-[70vh] overflow-y-auto pr-2">
+          <nav aria-label="Category list" class="space-y-1">
+            {sidebarCategories.length > 0 ? (
+              sidebarCategories.map((cat) => (
+                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
+              ))
+            ) : (
+              <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
+            )}
+          </nav>
+        </div>
 
-        <!-- Mobile overlay panel -->
-        <div x-show="open" x-cloak class="fixed inset-0 z-50 lg:hidden">
-          <div class="absolute inset-0 bg-black/40" @click="open=false"></div>
-          <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto shadow-xl">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold">Ангилал</h2>
-              <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100">✕</button>
-            </div>
-            <nav aria-label="Category list (mobile)" class="space-y-1">
-              {sidebarCategories.length > 0 ? (
-                sidebarCategories.map((cat) => (
-                  <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
-                ))
-              ) : (
-                <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
-              )}
-            </nav>
-          </div>
-        </div>
-      </aside>
+        <!-- Mobile overlay panel -->
+        <div x-show="open" x-cloak class="fixed inset-0 z-50 lg:hidden">
+          <div class="absolute inset-0 bg-black/40" @click="open=false"></div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto shadow-xl">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg font-semibold">Ангилал</h2>
+              <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100">✕</button>
+            </div>
+            <nav aria-label="Category list (mobile)" class="space-y-1">
+              {sidebarCategories.length > 0 ? (
+                sidebarCategories.map((cat) => (
+                  <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${cat.id === resolvedCategoryId ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
+                ))
+              ) : (
+                <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
+              )}
+            </nav>
+          </div>
+        </div>
+      </aside>
 
-      <!-- Content -->
-      <div class="lg:col-span-9">
-        <nav class="mb-4 text-sm text-gray-600" aria-label="Breadcrumb">
-          <ol class="list-none p-0 inline-flex">
-            <li class="flex items-center"><a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a><span class="mx-2">/</span></li>
-            <li class="flex items-center"><span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span></li>
-          </ol>
-        </nav>
+      <!-- Content -->
+      <div class="lg:col-span-9">
+        <nav class="mb-4 text-sm text-gray-600" aria-label="Breadcrumb">
+          <ol class="list-none p-0 inline-flex">
+            <li class="flex items-center"><a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a><span class="mx-2">/</span></li>
+            <li class="flex items-center"><span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span></li>
+          </ol>
+        </nav>
 
-        {products.length > 0 ? (
-          <>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {products.map((product: any) => (
-                <ProductCard product={product} />
+        {products.length > 0 ? (
+          <>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {products.map((product) => (
+                <ProductCard product={product} />
+              ))}
+            </div>
 
-              ))}
-            </div>
-
-            {totalPages > 1 && (
-              <div class="flex justify-center mt-8 space-x-2">
-                {page > 1 && <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Өмнөх</a>}
-                {pages.map(p => (p === '...' ? <span class="px-3 py-1 text-gray-500">...</span> : <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{p}</a>))}
-                {page < totalPages && <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Дараах</a>}
-              </div>
-            )}
-          </>
-        ) : (
-          <div class="text-center py-12">
-            <getByCategoryId class="text-xl text-gray-500">Энэ ангилалд бүтээгдэхүүн байхгүй байна.</getByCategoryId>
-          </div>
-        )}
-      </div>
-    </div>
-  </section>
+            {totalPages > 1 && (
+              <div class="flex justify-center mt-8 space-x-2">
+                {page > 1 && <a href={getPageUrl(page - 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Өмнөх</a>}
+                {pages.map(p => (p === '...' ? <span class="px-3 py-1 text-gray-500">...</span> : <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}>{p}</a>))}
+                {page < totalPages && <a href={getPageUrl(page + 1)} class="px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300">Дараах</a>}
+              </div>
+            )}
+          </>
+        ) : (
+          <div class="text-center py-12">
+            <p class="text-xl text-gray-500">Энэ ангилалд бүтээгдэхүүн байхгүй байна.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  </section>
 </BaseLayout>
