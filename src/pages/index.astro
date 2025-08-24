@@ -1,86 +1,19 @@
 ---
+// src/pages/index.astro
 import BaseLayout from "../layouts/BaseLayout.astro";
 import ProductCard from "../components/ProductCard.astro";
 import Carousel from "../components/Carousel.astro";
+import NewProducts from "../components/NewProducts.jsx";
 import apiClient from "../api/apiClient.jsx";
 
-const PAGE_SIZE = 20; // products per page
-const url = new URL(Astro.request.url);
-const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10)); // frontend 1-indexed
-
-let products = [];
-let totalProducts = 0;
-let totalPages = 0;
-let error = null;
-let currentPage = page;
-
-// Fetch paginated products from backend (robust: clamp out-of-range and refetch last page if needed)
+// Fetch only the featured products at build time
+let featured = [];
 try {
-    const data = await apiClient.products.getPage(page - 1, PAGE_SIZE);
-    totalPages = Math.max(1, data.totalPages || 0);
-    const clamped = Math.min(page, totalPages);
-
-    if (page > totalPages) {
-        const lastData = await apiClient.products.getPage(clamped - 1, PAGE_SIZE);
-        products = lastData.content || [];
-        totalProducts = lastData.totalElements || 0;
-    } else {
-        products = data.content || [];
-        totalProducts = data.totalElements || 0;
-    }
-
-    currentPage = clamped;
+  const data = await apiClient.products.getPage(0, 8);
+  featured = data.content || [];
 } catch (err) {
-    console.error("Бүтээгдэхүүнийг татаж чадсангүй (1-р оролдлого):", err);
-    try {
-        const firstData = await apiClient.products.getPage(0, PAGE_SIZE);
-        totalPages = Math.max(1, firstData.totalPages || 0);
-        const clamped = Math.min(page, totalPages);
-        currentPage = clamped;
-
-        if (clamped === 1) {
-            products = firstData.content || [];
-            totalProducts = firstData.totalElements || 0;
-        } else {
-            const clampedData = await apiClient.products.getPage(clamped - 1, PAGE_SIZE);
-            products = clampedData.content || [];
-            totalProducts = clampedData.totalElements || 0;
-        }
-    } catch (err2) {
-        console.error("Бүтээгдэхүүнийг татаж чадсангүй (сүүлчийн оролдлого):", err2);
-        error = "Бүтээгдэхүүнүүдийг татаж чадсангүй. Таны сүлжээ эсвэл серверт асуудал байна.";
-        products = [];
-        totalPages = 1;
-        currentPage = 1;
-    }
-}
-
-// Display all fetched products in the main grid
-const mainProducts = products;
-// For featured ribbons, pick the first 8 of current page
-const featured = products.slice(0, 8);
-
-function getPageUrl(p: number) {
-    const validPage = Math.max(1, Math.min(p, totalPages));
-    return `/?page=${validPage}`;
-}
-
-// Create pagination range with ellipsis
-const pageRange = 2;
-const pages: (number | string)[] = [];
-if (totalPages > 1) {
-    const start = Math.max(1, currentPage - pageRange);
-    const end = Math.min(totalPages, currentPage + pageRange);
-
-    if (start > 1) {
-        pages.push(1);
-        if (start > 2) pages.push("...");
-    }
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < totalPages) {
-        if (end < totalPages - 1) pages.push("...");
-        pages.push(totalPages);
-    }
+  console.error("Featured products could not be fetched:", err);
+  featured = [];
 }
 ---
 
@@ -118,48 +51,7 @@ if (totalPages > 1) {
             </a>
         </div>
 
-        <!-- All products grid -->
-        <div class="bg-gray-50 p-6 rounded-xl shadow-inner mt-8">
-            <h2 class="text-2xl font-semibold text-center mb-6">Шинэ бүтээгдэхүүнүүд</h2>
-
-            {error ? (
-                <div class="text-center py-12">
-                    <p class="text-xl text-red-600">{error}</p>
-                </div>
-            ) : mainProducts.length > 0 ? (
-                <>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
-                        {mainProducts.map((product: any) => (
-                            <ProductCard product={product} />
-                        ))}
-                    </div>
-
-                    {totalPages > 1 && (
-                        <div class="flex flex-wrap justify-center mt-8 gap-2">
-                            <a href={getPageUrl(currentPage - 1)} class={`px-3 py-1 rounded border ${currentPage <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-                                Өмнөх
-                            </a>
-                            {pages.map(p => (
-                                p === "..." ? (
-                                    <span class="px-3 py-1 text-gray-500">...</span>
-                                ) : (
-                                    <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${currentPage === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>
-                                        {p}
-                                    </a>
-                                )
-                            ))}
-                            <a href={getPageUrl(currentPage + 1)} class={`px-3 py-1 rounded border ${currentPage >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
-                                Дараах
-                            </a>
-                        </div>
-                    )}
-                </>
-            ) : (
-                <div class="text-center py-12">
-                    <p class="text-xl text-gray-600">Одоогоор бүтээгдэхүүн байхгүй байна.</p>
-                    <p class="text-gray-500 mt-2">Дараарай дахин шалгана уу.</p>
-                </div>
-            )}
-        </div>
+        <!-- All products grid now uses the new component -->
+        <NewProducts client:load />
     </section>
 </BaseLayout>

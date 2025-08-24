@@ -1,0 +1,103 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import apiClient from '../../api/apiClient.jsx';
+
+// Function to generate static paths for your products
+// This version fetches all products across all pages
+export async function getStaticPaths() {
+  const allPaths = [];
+  let page = 0;
+  let totalPages = 1; // Start with 1 to enter the loop
+
+  while (page < totalPages) {
+    try {
+      // Fetch a page of products (using a larger size for efficiency)
+      const data = await apiClient.products.getPage(page, 500);
+      
+      if (data && data.content) {
+        // Map products on the current page to their paths
+        const pagePaths = data.content.map(product => ({
+          params: { id: String(product.id) }
+        }));
+        allPaths.push(...pagePaths);
+
+        // Update totalPages for the next loop
+        totalPages = data.totalPages;
+        page++; // Move to the next page
+      } else {
+        console.error("No products found for static paths.");
+        break; // Exit the loop if no data is returned
+      }
+    } catch (e) {
+      console.error(`Error fetching products for static paths on page ${page}:`, e);
+      break;
+    }
+  }
+
+  return allPaths;
+}
+
+// Get the product ID from the URL parameters
+const { id } = Astro.params;
+let product = null;
+let error = null;
+
+// Fetch the single product by its ID
+try {
+  product = await apiClient.products.getById(id);
+} catch (e) {
+  console.error(`Error fetching product with ID ${id}:`, e);
+  error = "Бүтээгдэхүүнийг татаж чадсангүй. Магадгүй ийм дугаартай бүтээгдэхүүн байхгүй байх.";
+}
+
+// Format the price for display
+const formattedPrice = new Intl.NumberFormat('mn-MN').format(product?.price || 0);
+---
+
+<BaseLayout title={product ? product.name : "Бүтээгдэхүүн"}>
+  <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <a href="/" class="text-sm text-[#003375] hover:text-[#f7941e] font-medium mb-6 inline-block">← Нүүр хуудас руу буцах</a>
+    
+    {error && (
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+        <strong class="font-bold">Алдаа гарлаа!</strong>
+        <span class="block sm:inline ml-2">{error}</span>
+      </div>
+    )}
+
+    {product && (
+      <div class="bg-white rounded-2xl shadow-xl overflow-hidden md:flex">
+        <div class="md:w-1/2 p-4 flex items-center justify-center">
+          <img src={product.imagePath || "https://placehold.co/600x600/E0E0E0/ffffff?text=Зураг+байхгүй"} alt={product.name} class="rounded-xl object-contain max-h-96 w-full"/>
+        </div>
+        <div class="md:w-1/2 p-8">
+          <h1 class="text-3xl font-extrabold text-[#003375] mb-2">{product.name}</h1>
+          <p class="text-xl font-semibold text-gray-800 mb-4">{formattedPrice} ₮</p>
+          <p class="text-gray-600 mb-6">{product.shortName}</p>
+
+          <div class="border-t border-gray-200 pt-6">
+            <h2 class="text-lg font-semibold text-gray-800 mb-2">Дэлгэрэнгүй мэдээлэл</h2>
+            <ul class="text-gray-700 space-y-2">
+              <li class="flex justify-between items-center">
+                <span class="font-medium">Баркод:</span>
+                <span>{product.barcode}</span>
+              </li>
+              <li class="flex justify-between items-center">
+                <span class="font-medium">Ангилал:</span>
+                <span>{product.categoryID?.name || "Тодорхойгүй"}</span>
+              </li>
+              <li class="flex justify-between items-center">
+                <span class="font-medium">Хэмжих нэгж:</span>
+                <span>{product.measureUnitID?.name || "Тодорхойгүй"}</span>
+              </li>
+              <li class="flex justify-between items-center">
+                <span class="font-medium">НӨАТ-гүй эсэх:</span>
+                <span>{product.isVATFree ? "Тийм" : "Үгүй"}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    )}
+  </section>
+</BaseLayout>
