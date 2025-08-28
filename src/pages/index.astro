@@ -16,42 +16,81 @@ try {
   featured = [];
 }
 ---
-
 <BaseLayout title="Нүүр хуудас">
-    <div class="px-[3%] py-3 2xl:px-[8%]">
-        <!-- Одоо байгаа карусель -->
-        <Carousel />
-    </div>
+  <div class="px-[3%] py-3 2xl:px-[8%]">
+    <!-- Hero Carousel -->
+    <Carousel />
+  </div>
 
-    <section class="max-w-7xl mx-auto px-6 lg:px-8">
-        <!-- 🎁 Шинэ баннер: Онцгой урамшуулал -->
-        <div class="my-8">
-            <a href="/sales" class="block">
-                <img src="https://placehold.co/1200x250/003375/ffffff?text=Онцгой+Хямдрал+ба+Урамшуулал" alt="Онцгой хямдрал" class="w-full h-auto rounded-2xl shadow-lg transition-transform hover:scale-[1.01] duration-300" />
-            </a>
-        </div>
+  <section class="max-w-7xl mx-auto px-6 lg:px-8">
+    <!-- 🎁 Top Banner Row -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 my-8">
+      <a href="/sale" class="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition">
+        <img
+          src="/img/sale.jpg"
+          alt="Хямдрал"
+          class="w-full h-full object-cover rounded-lg"
+        />
+      </a>
+      <a href="/new" class="block rounded-lg overflow-hidden shadow-md hover:shadow-lg transition">
+        <img
+          src="/img/new.jpg"
+          alt="Шинэ бүтээгдэхүүн"
+          class="w-full h-full object-cover rounded-lg"
+        />
+      </a>
+    </div>
 
-        <!-- Featured row -->
-        <div class="mt-6">
-            <div class="flex items-center gap-2 text-gray-700 mb-3">
-                <span class="h-3 w-3 rounded-full bg-[#003375]"></span>
-                <h2 class="text-xl font-semibold">Онцлох</h2>
-            </div>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-4">
-                {featured.map((p: any) => (
-                    <ProductCard product={p} />
-                ))}
-            </div>
-        </div>
+    <!-- Featured row -->
+    <div class="mt-6 shadow-inner p-4 rounded-lg bg-white">
+      <div class="flex items-center gap-2 text-gray-700 mb-3">
+        <span class="h-3 w-3 rounded-full bg-[#003375]"></span>
+        <h2 class="text-xl font-semibold">Онцлох</h2>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-4 gap-4">
+        {featured.map((p: any) => (
+          <ProductCard product={p} />
+        ))}
+      </div>
+    </div>
 
-        <!-- 🎁 Шинэ жижиг баннер: Үнэгүй хүргэлт -->
-        <div class="my-8">
-            <a href="/delivery" class="block">
-                <img src="https://placehold.co/1200x120/f7941e/ffffff?text=100'000+₮-с+дээш+худалдан+авалтад+үнэгүй+хүргэлт" alt="Үнэгүй хүргэлт" class="w-full h-auto rounded-xl shadow-md transition-transform hover:scale-[1.01] duration-300" />
-            </a>
-        </div>
+    <!-- 🎁 Mid-Page Banner (Free Shipping, Promo, etc.) -->
+    <div class="my-10">
+      <a href="/delivery" class="block">
+        <img
+          src="https://placehold.co/1200x200/f7941e/ffffff?text=100'000+₮-с+дээш+үнэгүй+хүргэлт"
+          alt="Үнэгүй хүргэлт"
+          class="w-full h-auto rounded-xl shadow-md transition-transform hover:scale-[1.01] duration-300"
+        />
+      </a>
+    </div>
 
-        <!-- All products grid now uses the new component -->
-        <NewProducts client:load />
-    </section>
+    <!-- 🎁 3 Small Promo Banners -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 my-10">
+      <a href="/category/5144" class="block">
+        <img
+          src="../img/electronics.jpg"
+          alt="Цахилгаан бараа"
+          class="w-full rounded-lg shadow hover:opacity-90 transition"
+        />
+      </a>
+      <a href="/category/97" class="block">
+        <img
+          src="../img/book.jpg"
+          alt="Ном"
+          class="w-full rounded-lg shadow hover:opacity-90 transition"
+        />
+      </a>
+      <a href="/category/126" class="block">
+        <img
+          src="../img/house.jpg"
+          alt="Гэр ахуй"
+          class="w-full rounded-lg shadow hover:opacity-90 transition"
+        />
+      </a>
+    </div>
+
+    <!-- All products -->
+    <NewProducts client:load />
+  </section>
 </BaseLayout>

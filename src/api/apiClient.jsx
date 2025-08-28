@@ -168,6 +168,24 @@ const users = {
   remove: (id) => api.delete(`/user/${id}`).then(r => r.data),
 };
 
+// Carts endpoints
+const carts = {
+  create: () =>
+    api.post('/carts').then(r => r.data),
+
+  get: (cartId) =>
+    api.get(`/carts/${cartId}`).then(r => r.data),
+
+  addProduct: (cartId, productId, qty = 1) =>
+    api.post(`/carts/${cartId}/add/${productId}`, null, { params: { quantity: qty } }).then(r => r.data),
+
+  removeProduct: (cartId, productId) =>
+    api.delete(`/carts/${cartId}/remove/${productId}`).then(r => r.data),
+
+  getTotal: (cartId) =>
+    api.get(`/carts/${cartId}/total`).then(r => r.data),
+};
+
 export default {
   axios: api,
   baseURL: API_BASE,
@@ -175,4 +193,5 @@ export default {
   products,
   categories,
   users,
+  carts
 };

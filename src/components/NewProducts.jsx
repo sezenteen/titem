@@ -217,10 +217,6 @@ export default function NewProducts() {
             </div>
           )}
 
-          <div className="text-center mt-4 text-sm text-gray-600">
-            Хуудас {currentPage} / {totalPages} 
-            ({((currentPage - 1) * PAGE_SIZE + 1)}-{Math.min(currentPage * PAGE_SIZE, totalElements)} / {totalElements})
-          </div>
         </>
       ) : (
         <div className="text-center py-12">

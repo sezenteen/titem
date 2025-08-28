@@ -1,103 +1,350 @@
 ---
+// src/pages/product/[id].astro - IMPROVED VERSION
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import apiClient from '../../api/apiClient.jsx';
 
-// Function to generate static paths for your products
-// This version fetches all products across all pages
+// Optimized static path generation with better error handling
 export async function getStaticPaths() {
   const allPaths = [];
   let page = 0;
-  let totalPages = 1; // Start with 1 to enter the loop
+  const pageSize = 100; // Reasonable page size
+  let hasMorePages = true;
 
-  while (page < totalPages) {
-    try {
-      // Fetch a page of products (using a larger size for efficiency)
-      const data = await apiClient.products.getPage(page, 500);
+  try {
+    while (hasMorePages) {
+      const data = await apiClient.products.getPage(page, pageSize);
       
-      if (data && data.content) {
-        // Map products on the current page to their paths
+      if (data?.content?.length > 0) {
+        // Add paths for products on current page
         const pagePaths = data.content.map(product => ({
-          params: { id: String(product.id) }
+          params: { id: String(product.id) },
+          props: { 
+            productName: product.name,
+            categoryId: product.categoryID?.id,
+            categoryName: product.categoryID?.name
+          }
         }));
         allPaths.push(...pagePaths);
 
-        // Update totalPages for the next loop
-        totalPages = data.totalPages;
-        page++; // Move to the next page
+        // Check if we have more pages
+        hasMorePages = page < (data.totalPages - 1);
+        page++;
       } else {
-        console.error("No products found for static paths.");
-        break; // Exit the loop if no data is returned
+        hasMorePages = false;
       }
-    } catch (e) {
-      console.error(`Error fetching products for static paths on page ${page}:`, e);
-      break;
     }
-  }
 
-  return allPaths;
+    console.log(`Generated ${allPaths.length} product paths for static generation`);
+    return allPaths;
+    
+  } catch (error) {
+    console.error('Error fetching products for static paths:', error);
+    return []; // Return empty array to prevent build failure
+  }
 }
 
-// Get the product ID from the URL parameters
+// Get parameters from URL and props
 const { id } = Astro.params;
+const { productName, categoryId, categoryName } = Astro.props;
+
 let product = null;
+let relatedProducts = [];
+let category = null;
 let error = null;
 
-// Fetch the single product by its ID
+// Fetch the product by ID
 try {
   product = await apiClient.products.getById(id);
+  
+  // If product exists, try to fetch related products from the same category
+  if (product?.categoryID?.id) {
+    try {
+      const relatedData = await apiClient.products.getByCategoryId(
+        product.categoryID.id, 
+        0, // First page
+        8  // Limit to 8 related products
+      );
+      
+      if (relatedData?.content) {
+        // Filter out current product and limit results
+        relatedProducts = relatedData.content
+          .filter(p => p.id !== product.id)
+          .slice(0, 6);
+      }
+    } catch (relatedError) {
+      console.warn('Could not fetch related products:', relatedError);
+      // Don't set error here, just continue without related products
+    }
+  }
+  
 } catch (e) {
   console.error(`Error fetching product with ID ${id}:`, e);
-  error = "Бүтээгдэхүүнийг татаж чадсангүй. Магадгүй ийм дугаартай бүтээгдэхүүн байхгүй байх.";
+  if (e.response?.status === 404) {
+    error = "Уучлаарай, ийм дугаартай бүтээгдэхүүн олдсонгүй.";
+  } else {
+    error = "Бүтээгдэхүүнийг татахад алдаа гарлаа. Дахин оролдоно уу.";
+  }
 }
 
-// Format the price for display
-const formattedPrice = new Intl.NumberFormat('mn-MN').format(product?.price || 0);
+// Helper functions
+function formatPrice(price) {
+  if (!price || price === 0) return 'Үнэ тодорхойгүй';
+  return new Intl.NumberFormat('mn-MN').format(price) + ' ₮';
+}
+
+function getImageUrl(imagePath, productName = 'Бүтээгдэхүүн') {
+  if (imagePath) return imagePath;
+  return `https://placehold.co/600x600/f3f4f6/6b7280?text=${encodeURIComponent(productName)}`;
+}
+
+// Generate structured data for SEO
+const structuredData = product ? {
+  "@context": "https://schema.org/",
+  "@type": "Product",
+  "name": product.name,
+  "description": product.shortName || product.name,
+  "sku": product.barcode,
+  "offers": {
+    "@type": "Offer",
+    "url": `${Astro.url.origin}/product/${product.id}`,
+    "priceCurrency": "MNT",
+    "price": product.price,
+    "availability": "https://schema.org/InStock"
+  },
+  "category": product.categoryID?.name
+} : null;
+
+// Page title and meta description
+const pageTitle = product ? `${product.name} - Дэлгэрэнгүй` : "Бүтээгдэхүүн олдсонгүй";
+const pageDescription = product 
+  ? `${product.name} - ${formatPrice(product.price)}. ${product.shortName || ''}`
+  : "Уучлаарай, хайсан бүтээгдэхүүн олдсонгүй.";
 ---
 
-<BaseLayout title={product ? product.name : "Бүтээгдэхүүн"}>
-  <section class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <a href="/" class="text-sm text-[#003375] hover:text-[#f7941e] font-medium mb-6 inline-block">← Нүүр хуудас руу буцах</a>
+<BaseLayout title={pageTitle} description={pageDescription}>
+  {structuredData && (
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  )}
+  
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <!-- Breadcrumb navigation -->
+    <nav class="mb-6 text-sm" aria-label="Breadcrumb">
+      <ol class="flex items-center space-x-2 text-gray-600">
+        <li>
+          <a href="/" class="hover:text-[#f7941e] transition-colors flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            Нүүр
+          </a>
+        </li>
+        
+        {product?.categoryID && (
+          <>
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mx-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              <a href={`/category/${product.categoryID.id}`} class="hover:text-[#f7941e] transition-colors">
+                {product.categoryID.name}
+              </a>
+            </li>
+            <li class="flex items-center">
+              <svg class="w-4 h-4 mx-2 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+              </svg>
+              <span class="font-medium text-gray-900 truncate max-w-xs">
+                {product.name}
+              </span>
+            </li>
+          </>
+        )}
+      </ol>
+    </nav>
+
+    <!-- Back button -->
+    <div class="mb-6">
+      <a 
+        href="javascript:history.back()" 
+        class="inline-flex items-center text-sm text-[#003375] hover:text-[#f7941e] font-medium transition-colors"
+      >
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Буцах
+      </a>
+    </div>
     
+    <!-- Error state -->
     {error && (
-      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong class="font-bold">Алдаа гарлаа!</strong>
-        <span class="block sm:inline ml-2">{error}</span>
-      </div>
-    )}
-
-    {product && (
-      <div class="bg-white rounded-2xl shadow-xl overflow-hidden md:flex">
-        <div class="md:w-1/2 p-4 flex items-center justify-center">
-          <img src={product.imagePath || "https://placehold.co/600x600/E0E0E0/ffffff?text=Зураг+байхгүй"} alt={product.name} class="rounded-xl object-contain max-h-96 w-full"/>
-        </div>
-        <div class="md:w-1/2 p-8">
-          <h1 class="text-3xl font-extrabold text-[#003375] mb-2">{product.name}</h1>
-          <p class="text-xl font-semibold text-gray-800 mb-4">{formattedPrice} ₮</p>
-          <p class="text-gray-600 mb-6">{product.shortName}</p>
-
-          <div class="border-t border-gray-200 pt-6">
-            <h2 class="text-lg font-semibold text-gray-800 mb-2">Дэлгэрэнгүй мэдээлэл</h2>
-            <ul class="text-gray-700 space-y-2">
-              <li class="flex justify-between items-center">
-                <span class="font-medium">Баркод:</span>
-                <span>{product.barcode}</span>
-              </li>
-              <li class="flex justify-between items-center">
-                <span class="font-medium">Ангилал:</span>
-                <span>{product.categoryID?.name || "Тодорхойгүй"}</span>
-              </li>
-              <li class="flex justify-between items-center">
-                <span class="font-medium">Хэмжих нэгж:</span>
-                <span>{product.measureUnitID?.name || "Тодорхойгүй"}</span>
-              </li>
-              <li class="flex justify-between items-center">
-                <span class="font-medium">НӨАТ-гүй эсэх:</span>
-                <span>{product.isVATFree ? "Тийм" : "Үгүй"}</span>
-              </li>
-            </ul>
+      <div class="max-w-2xl mx-auto text-center py-16">
+        <div class="bg-red-50 rounded-lg p-8">
+          <svg class="mx-auto h-16 w-16 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h1 class="text-2xl font-bold text-red-800 mb-2">Алдаа гарлаа</h1>
+          <p class="text-red-600 mb-6">{error}</p>
+          <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <button 
+              onclick="window.location.reload()" 
+              class="inline-flex items-center px-6 py-3 bg-red-600 text-white font-medium rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Дахин оролдох
+            </button>
+            <a 
+              href="/products" 
+              class="inline-flex items-center px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              Бүх бүтээгдэхүүн үзэх
+            </a>
           </div>
         </div>
       </div>
     )}
-  </section>
-</BaseLayout>
+
+    <!-- Product content -->
+    {product && (
+      <>
+        <!-- Product detail section -->
+        <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Product image -->
+            <div class="p-6 lg:p-8 flex items-center justify-center bg-gray-50">
+              <div class="w-full max-w-md">
+                <img 
+                  src={getImageUrl(product.imagePath, product.name)} 
+                  alt={product.name}
+                  class="w-full h-auto rounded-xl object-contain max-h-96 shadow-sm"
+                  loading="eager"
+                />
+              </div>
+            </div>
+            
+            <!-- Product info -->
+            <div class="p-6 lg:p-8">
+              <div class="space-y-6">
+                <!-- Title and price -->
+                <div>
+                  <h1 class="text-3xl font-bold text-[#003375] mb-3 leading-tight">
+                    {product.name}
+                  </h1>
+                  <div class="flex items-baseline gap-4 mb-4">
+                    <span class="text-3xl font-bold text-[#f7941e]">
+                      {formatPrice(product.price)}
+                    </span>
+                    {product.isVATFree && (
+                      <span class="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                        НӨАТ-гүй
+                      </span>
+                    )}
+                  </div>
+                  {product.shortName && (
+                    <p class="text-lg text-gray-600 leading-relaxed">
+                      {product.shortName}
+                    </p>
+                  )}
+                </div>
+
+                <!-- Product details -->
+                <div class="border-t border-gray-200 pt-6">
+                  <h2 class="text-xl font-semibold text-gray-900 mb-4">Дэлгэрэнгүй мэдээлэл</h2>
+                  <dl class="grid grid-cols-1 gap-4">
+                    {product.barcode && (
+                      <div class="flex justify-between items-center py-2">
+                        <dt class="text-sm font-medium text-gray-600">Баркод:</dt>
+                        <dd class="text-sm text-gray-900 font-mono">{product.barcode}</dd>
+                      </div>
+                    )}
+                    
+                    {product.categoryID?.name && (
+                      <div class="flex justify-between items-center py-2">
+                        <dt class="text-sm font-medium text-gray-600">Ангилал:</dt>
+                        <dd class="text-sm">
+                          <a 
+                            href={`/category/${product.categoryID.id}`}
+                            class="text-[#f7941e] hover:text-[#e6831c] font-medium transition-colors"
+                          >
+                            {product.categoryID.name}
+                          </a>
+                        </dd>
+                      </div>
+                    )}
+                    
+                    {product.measureUnitID?.name && (
+                      <div class="flex justify-between items-center py-2">
+                        <dt class="text-sm font-medium text-gray-600">Хэмжих нэгж:</dt>
+                        <dd class="text-sm text-gray-900">{product.measureUnitID.name}</dd>
+                      </div>
+                    )}
+                    
+                    <div class="flex justify-between items-center py-2">
+                      <dt class="text-sm font-medium text-gray-600">НӨАТ:</dt>
+                      <dd class="text-sm text-gray-900">
+                        {product.isVATFree ? "НӨАТ-гүй" : "НӨАТ-тай"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="border-t border-gray-200 pt-6">
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <button class="flex-1 bg-[#f7941e] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e6831c] transition-colors focus:outline-none focus:ring-2 focus:ring-[#f7941e] focus:ring-offset-2">
+                      Сагсанд нэмэх
+                    </button>
+                    <button class="flex-1 border-2 border-[#003375] text-[#003375] px-6 py-3 rounded-lg font-semibold hover:bg-[#003375] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#003375] focus:ring-offset-2">
+                      Дэлгүүрт харах
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Related products section -->
+        {relatedProducts.length > 0 && (
+          <section class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+              <h2 class="text-2xl font-bold text-gray-900">Үүнтэй төстэй бүтээгдэхүүнүүд</h2>
+              {product.categoryID && (
+                <a 
+                  href={`/category/${product.categoryID.id}`}
+                  class="text-[#f7941e] hover:text-[#e6831c] font-medium text-sm transition-colors"
+                >
+                  Бүгдийг үзэх →
+                </a>
+              )}
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {relatedProducts.map((relatedProduct) => (
+                <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                  <a href={`/product/${relatedProduct.id}`} class="block">
+                    <div class="aspect-square p-3">
+                      <img 
+                        src={getImageUrl(relatedProduct.imagePath, relatedProduct.name)} 
+                        alt={relatedProduct.name}
+                        class="w-full h-full object-contain rounded"
+                        loading="lazy"
+                      />
+                    </div>
+                    <div class="p-3 border-t">
+                      <h3 class="text-sm font-medium text-gray-900 line-clamp-2 mb-2">
+                        {relatedProduct.name}
+                      </h3>
+                      <p class="text-sm font-semibold text-[#f7941e]">
+                        {formatPrice(relatedProduct.price)}
+                      </p>
+                    </div>
+                  </a>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </>
+    )}
