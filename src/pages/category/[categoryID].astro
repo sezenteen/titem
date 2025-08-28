@@ -1,4 +1,5 @@
 ---
+// src/pages/category/[categoryID].astro - FIXED VERSION
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ProductCard from '../../components/ProductCard.astro';
 import apiClient from '../../api/apiClient.jsx';
@@ -35,17 +36,33 @@ const page = parseInt(url.searchParams.get('page') ?? '1', 10);
 let products: any[] = [];
 let totalProducts = 0;
 let totalPages = 0;
+let totalElements = 0;
 let error = null;
 
 try {
-  // Fetch products for the specific category and page.
+  // FIXED: Use zero-based page index for backend (page - 1)
   const data = await apiClient.products.getByCategoryId(Number(categoryID), page - 1, PAGE_SIZE);
-  products = Array.isArray(data.content) ? data.content : [];
-  totalProducts = data.totalElements || 0;
-  totalPages = data.totalPages || 0;
+  
+  // FIXED: Handle Spring Boot pageable response structure
+  if (data && typeof data === 'object') {
+    products = Array.isArray(data.content) ? data.content : [];
+    totalProducts = data.totalElements || 0;
+    totalPages = data.totalPages || 0;
+    totalElements = data.totalElements || 0;
+  } else {
+    // Fallback if response structure is different
+    products = Array.isArray(data) ? data : [];
+    totalProducts = products.length;
+    totalPages = Math.ceil(products.length / PAGE_SIZE);
+    totalElements = products.length;
+  }
 } catch (err) {
   console.error(`Error fetching products for category ${categoryID}:`, err);
   error = "Бүтээгдэхүүнүүдийг татаж чадсангүй.";
+  products = [];
+  totalProducts = 0;
+  totalPages = 0;
+  totalElements = 0;
 }
 
 // Fetch categories for the sidebar.
@@ -58,123 +75,312 @@ try {
   console.error('Error fetching categories for sidebar:', e);
 }
 
-// Function to generate the URL for a given page number.
+// FIXED: Function to generate the URL for a given page number.
 function getPageUrl(p: number) {
   // Ensure the page number is within a valid range.
   const validPage = Math.max(1, Math.min(p, totalPages > 0 ? totalPages : 1));
   return `/category/${categoryID}?page=${validPage}`;
 }
 
-// Generate page numbers with ellipsis
-const pageRange = 2;
-const pages = [];
-if (totalPages > 1) {
+// FIXED: Generate page numbers with ellipsis - improved logic
+const generatePageNumbers = () => {
+  const pages = [];
+  const pageRange = 2;
+  
+  if (totalPages <= 1) return pages;
+
   const start = Math.max(1, page - pageRange);
   const end = Math.min(totalPages, page + pageRange);
 
+  // Add first page if needed
   if (start > 1) {
     pages.push(1);
     if (start > 2) pages.push('...');
   }
-  for (let i = start; i <= end; i++) pages.push(i);
+
+  // Add page range
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  // Add last page if needed
   if (end < totalPages) {
     if (end < totalPages - 1) pages.push('...');
     pages.push(totalPages);
   }
-}
+
+  return pages;
+};
+
+const pages = generatePageNumbers();
+
+// FIXED: Calculate display range for current page
+const startItem = totalElements === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+const endItem = Math.min(page * PAGE_SIZE, totalElements);
 ---
 
 <BaseLayout title={`${categoryTitle || 'Ангилал'}`}>
-  <section x-data="{ open:false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- FIXED: Added Alpine.js script for mobile menu -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  
+  <section x-data="{ open: false }" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex items-center justify-between mb-4 lg:mb-6">
-      <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || 'Ангилал'}</h1>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{categoryTitle || 'Ангилал'}</h1>
+        {/* FIXED: Added product count display */}
+        {totalElements > 0 && (
+          <p class="text-sm text-gray-600 mt-1">
+            Нийт {totalElements.toLocaleString()} бүтээгдэхүүн олдлоо
+          </p>
+        )}
+      </div>
       <button @click="open=true" class="lg:hidden inline-flex items-center gap-2 px-3 py-2 rounded-md bg-gray-900 text-white text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
         Ангилал
       </button>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Sidebar -->
+      <!-- FIXED: Sidebar with better styling -->
       <aside class="lg:col-span-3">
         <!-- Desktop sidebar -->
         <div class="hidden lg:block sticky top-24 max-h-[70vh] overflow-y-auto pr-2">
-          <nav aria-label="Category list" class="space-y-1">
-            {sidebarCategories.length > 0 ? (
-              sidebarCategories.map((cat) => (
-                <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${String(cat.id) === categoryID ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`}>{cat.name}</a>
-              ))
-            ) : (
-              <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
-            )}
-          </nav>
-        </div>
-
-        <!-- Mobile overlay panel -->
-        <div x-show="open" x-cloak class="fixed inset-0 z-50 lg:hidden">
-          <div class="absolute inset-0 bg-black/40" @click="open=false"></div>
-          <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto shadow-xl">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-lg font-semibold">Ангилал</h2>
-              <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100">✕</button>
-            </div>
-            <nav aria-label="Category list (mobile)" class="space-y-1">
+          <div class="bg-white rounded-lg shadow-sm border p-4">
+            <h3 class="text-lg font-semibold text-gray-900 mb-3">Ангилалууд</h3>
+            <nav aria-label="Category list" class="space-y-1">
+              {/* FIXED: Add "All Products" option */}
+              <a 
+                href="/products" 
+                class="block px-3 py-2 rounded-md text-sm font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-gray-700"
+              >
+                🏷️ Бүх бүтээгдэхүүн
+              </a>
               {sidebarCategories.length > 0 ? (
                 sidebarCategories.map((cat) => (
-                  <a href={`/category/${cat.id}`} class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${String(cat.id) === categoryID ? 'bg-[#f7941e] text-white' : 'bg-gray-50 hover:bg-gray-100 text-gray-700'}`} @click="open=false">{cat.name}</a>
+                  <a 
+                    href={`/category/${cat.id}`} 
+                    class={`block px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      String(cat.id) === categoryID 
+                        ? 'bg-[#f7941e] text-white shadow-sm' 
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700 hover:text-gray-900'
+                    }`}
+                  >
+                    {cat.name}
+                  </a>
                 ))
               ) : (
-                <p class="text-gray-500 text-sm">Ангилал олдсонгүй.</p>
+                <p class="text-gray-500 text-sm px-3 py-2">Ангилал олдсонгүй.</p>
+              )}
+            </nav>
+          </div>
+        </div>
+
+        <!-- FIXED: Mobile overlay panel with better UX -->
+        <div x-show="open" x-cloak class="fixed inset-0 z-50 lg:hidden">
+          <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="open=false"></div>
+          <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">Ангилал сонгох</h2>
+              <button @click="open=false" class="p-2 rounded-md hover:bg-gray-100 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <nav aria-label="Category list (mobile)" class="space-y-2">
+              <a 
+                href="/products" 
+                class="block px-4 py-3 rounded-lg text-sm font-medium transition-colors bg-gray-50 hover:bg-gray-100 text-gray-700"
+                @click="open=false"
+              >
+                🏷️ Бүх бүтээгдэхүүн
+              </a>
+              {sidebarCategories.length > 0 ? (
+                sidebarCategories.map((cat) => (
+                  <a 
+                    href={`/category/${cat.id}`} 
+                    class={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                      String(cat.id) === categoryID 
+                        ? 'bg-[#f7941e] text-white' 
+                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700'
+                    }`} 
+                    @click="open=false"
+                  >
+                    {cat.name}
+                  </a>
+                ))
+              ) : (
+                <p class="text-gray-500 text-sm px-4 py-3">Ангилал олдсонгүй.</p>
               )}
             </nav>
           </div>
         </div>
       </aside>
 
-      <!-- Content -->
+      <!-- FIXED: Content area with better layout -->
       <div class="lg:col-span-9">
-        <nav class="mb-4 text-sm text-gray-600" aria-label="Breadcrumb">
-          <ol class="list-none p-0 inline-flex">
-            <li class="flex items-center"><a href="/" class="hover:text-[#f7941e]">Нүүр хуудас</a><span class="mx-2">/</span></li>
-            <li class="flex items-center"><span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span></li>
+        <!-- FIXED: Breadcrumb with better styling -->
+        <nav class="mb-6 text-sm text-gray-600" aria-label="Breadcrumb">
+          <ol class="list-none p-0 inline-flex items-center space-x-1">
+            <li class="flex items-center">
+              <a href="/" class="hover:text-[#f7941e] transition-colors">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
+                Нүүр хуудас
+              </a>
+              <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+              </svg>
+            </li>
+            <li class="flex items-center">
+              <span class="font-semibold text-gray-800">{categoryTitle || 'Ангилал'}</span>
+            </li>
           </ol>
         </nav>
 
+        {/* FIXED: Better error handling with retry option */}
         {error ? (
           <div class="text-center py-12">
-            <p class="text-xl text-red-600">{error}</p>
+            <div class="max-w-md mx-auto">
+              <svg class="mx-auto h-16 w-16 text-red-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 class="text-lg font-medium text-red-800 mb-2">Алдаа гарлаа</h3>
+              <p class="text-red-600 mb-4">{error}</p>
+              <button 
+                onclick="window.location.reload()" 
+                class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Дахин оролдох
+              </button>
+            </div>
           </div>
         ) : products.length > 0 ? (
           <>
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {/* FIXED: Product count and pagination info */}
+            <div class="flex justify-between items-center mb-6 bg-gray-50 px-4 py-3 rounded-lg">
+              <span class="text-sm text-gray-700">
+                <strong>{startItem}-{endItem}</strong> / <strong>{totalElements.toLocaleString()}</strong> бүтээгдэхүүн
+              </span>
+              <span class="text-sm text-gray-600">
+                Хуудас <strong>{page}</strong> / <strong>{totalPages}</strong>
+              </span>
+            </div>
+
+            {/* FIXED: Product grid with responsive design */}
+            <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
               {products.map((product) => (
                 <ProductCard product={product} />
               ))}
             </div>
 
+            {/* FIXED: Improved pagination with better styling */}
             {totalPages > 1 && (
-              <div class="flex justify-center mt-8 space-x-2">
-                <a href={getPageUrl(page - 1)} class={`px-3 py-1 rounded border ${page <= 1 ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+              <div class="mt-8 space-y-4">
+                <div class="flex flex-wrap justify-center items-center gap-2">
+                  {/* Previous button */}
+                  <a 
+                    href={getPageUrl(page - 1)} 
+                    class={`flex items-center px-4 py-2 rounded-lg border transition-all duration-200 ${
+                      page <= 1 
+                        ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 hover:shadow-sm'
+                    }`}
+                    aria-label="Previous page"
+                  >
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
                     Өмнөх
-                </a>
-                {pages.map(p => (
-                  p === '...' ? (
-                    <span class="px-3 py-1 text-gray-500">...</span>
-                  ) : (
-                    <a href={getPageUrl(p as number)} class={`px-3 py-1 rounded ${page === p ? 'bg-[#f7941e] text-white' : 'bg-white border text-gray-700 hover:bg-gray-50'}`}>{p}</a>
-                  )
-                ))}
-                <a href={getPageUrl(page + 1)} class={`px-3 py-1 rounded border ${page >= totalPages ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400' : 'bg-white text-gray-700 hover:bg-gray-50'}`}>
+                  </a>
+
+                  {/* Page numbers */}
+                  {pages.map((p, index) => (
+                    p === '...' ? (
+                      <span key={index} class="px-3 py-2 text-gray-500">...</span>
+                    ) : (
+                      <a 
+                        key={index}
+                        href={getPageUrl(p as number)} 
+                        class={`px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
+                          page === p 
+                            ? 'bg-[#f7941e] text-white shadow-md ring-2 ring-[#f7941e] ring-opacity-50' 
+                            : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm'
+                        }`}
+                        aria-label={`Go to page ${p}`}
+                        aria-current={page === p ? 'page' : undefined}
+                      >
+                        {p}
+                      </a>
+                    )
+                  ))}
+
+                  {/* Next button */}
+                  <a 
+                    href={getPageUrl(page + 1)} 
+                    class={`flex items-center px-4 py-2 rounded-lg border transition-all duration-200 ${
+                      page >= totalPages 
+                        ? 'pointer-events-none opacity-50 bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed' 
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300 hover:border-gray-400 hover:shadow-sm'
+                    }`}
+                    aria-label="Next page"
+                  >
                     Дараах
-                </a>
+                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                </div>
+
+                {/* FIXED: Page info summary */}
+                <div class="text-center">
+                  <p class="text-sm text-gray-600">
+                    {startItem}-{endItem} of {totalElements.toLocaleString()} бүтээгдэхүүн 
+                    ({totalPages} хуудас)
+                  </p>
+                </div>
               </div>
             )}
           </>
         ) : (
-          <div class="text-center py-12">
-            <p class="text-xl text-gray-500">Энэ ангилалд бүтээгдэхүүн байхгүй байна.</p>
+          /* FIXED: Empty state with better design */
+          <div class="text-center py-16">
+            <div class="max-w-md mx-auto">
+              <svg class="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m5-8h2M9 9h2" />
+              </svg>
+              <h3 class="text-xl font-medium text-gray-900 mb-2">Бүтээгдэхүүн олдсонгүй</h3>
+              <p class="text-gray-600 mb-6">Энэ ангилалд одоогоор бүтээгдэхүүн байхгүй байна.</p>
+              <div class="space-x-3">
+                <a 
+                  href="/products" 
+                  class="inline-flex items-center px-4 py-2 bg-[#f7941e] text-white rounded-lg hover:bg-[#e6831c] transition-colors"
+                >
+                  Бүх бүтээгдэхүүн үзэх
+                </a>
+                <button 
+                  onclick="window.location.reload()" 
+                  class="inline-flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Сэргээх
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
     </div>
   </section>
 </BaseLayout>
+
+<style>
+  [x-cloak] {
+    display: none !important;
+  }
+</style>

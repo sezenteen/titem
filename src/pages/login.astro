@@ -1,386 +1,165 @@
----
-import BaseLayout from "../layouts/BaseLayout.astro";
-
-const primaryBlue = '#004AAD'; // A slightly more vibrant blue
-const accentCyan = '#00C2CB'; // A complementary accent color
-const grayLight = '#F8F9FA'; // Lighter gray for background
-const grayMedium = '#E9ECEF'; // Slightly darker gray for card background
-const textDark = '#212529'; // Darker text for better contrast
----
-
-<BaseLayout title="Нэвтрэх" description="Нэвтрэх хуудас">
-    <main class="container mx-auto px-4 py-16 flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-        <div class="bg-white shadow-xl rounded-xl p-8 sm:p-10 w-full max-w-md border border-gray-200 animate-fade-in">
-            <h1 class="text-4xl font-extrabold text-center text-primaryBlue mb-8 tracking-tight">
-                Нэвтрэх
-            </h1>
-
-            <form id="login-form" class="space-y-6">
-                <div>
-                    <label for="email" class="block text-sm font-semibold text-textDark mb-2">Имэйл хаяг</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        required
-                        autocomplete="email"
-                        placeholder="Таны имэйл"
-                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
-                    />
-                </div>
-
-                <div>
-                    <label for="password" class="block text-sm font-semibold text-textDark mb-2">Нууц үг</label>
-                    <div class="relative">
-                        <input
-                            type="password"
-                            id="password"
-                            name="password"
-                            required
-                            autocomplete="current-password"
-                            placeholder="Нууц үгээ оруулна уу"
-                            class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out pr-12 placeholder-gray-400"
-                        />
-                        <button
-                            type="button"
-                            id="togglePassword"
-                            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-primaryBlue focus:outline-none"
-                            aria-label="Нууц үгийг харах эсвэл нуух"
-                        >
-                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 10 3 0 01-6 0 3 10 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center">
-                        <input
-                            id="remember-me"
-                            name="remember-me"
-                            type="checkbox"
-                            class="h-4 w-4 text-primaryBlue border-gray-300 rounded focus:ring-primaryBlue"
-                        />
-                        <label for="remember-me" class="ml-2 block text-sm text-textDark">
-                            Намайг сана
-                        </label>
-                    </div>
-                    <a href="/forgot-password" class="text-sm font-medium text-primaryBlue hover:text-accentCyan transition duration-200 ease-in-out hover:underline">
-                        Нууц үг мартсан?
-                    </a>
-                </div>
-
-                <button
-                    type="submit"
-                    id="login-button"
-                    class="w-full bg-primaryBlue text-white font-bold py-3 px-4 rounded-lg hover:bg-accentCyan focus:outline-none focus:ring-2 focus:ring-primaryBlue focus:ring-opacity-50 transition duration-200 ease-in-out transform hover:scale-105"
-                >
-                    Нэвтрэх
-                </button>
-
-                <p id="login-message" class="text-center text-sm mt-4" role="status" aria-live="polite"></p>
-
-                <p class="text-center text-sm text-gray-600 mt-6">
-                    Бүртгэлгүй юу?
-                    <a href="/register" class="font-medium text-primaryBlue hover:text-accentCyan transition duration-200 ease-in-out hover:underline">
-                        Бүртгүүлэх
-                    </a>
-                </p>
-
-                <div class="mt-6 border-t border-gray-200 pt-6">
-                    <div class="relative flex justify-center text-xs uppercase">
-                        <span class="bg-white px-2 text-gray-500">Эсвэл нэвтрэх</span>
-                    </div>
-                    <div class="mt-4 grid grid-cols-1 gap-3">
-                        <button
-                            type="button"
-                            class="w-full inline-flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primaryBlue"
-                        >
-                            <svg class="w-5 h-5 mr-2" aria-hidden="true" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12.0003 4.75C14.0503 4.75 15.8303 5.43 17.2403 6.84L20.0403 4.04C18.0103 2.01 15.1103 0.75 12.0003 0.75C7.57031 0.75 3.75031 3.47 1.96031 7.23L4.99031 9.69C5.55031 8.54 6.46031 7.59 7.59031 6.89C8.72031 6.19 10.0003 5.83 11.3003 5.75C12.0003 5.69 12.0003 5.75 12.0003 4.75Z" fill="#EA4335"/><path d="M23.25 12.0003C23.25 11.1003 23.18 10.2003 23.04 9.32031H12V14.6703H18.66C18.33 16.3203 17.3003 17.6503 15.8203 18.57L18.8603 21.02C20.9103 19.14 22.2503 16.2903 22.2503 12.0003H23.25Z" fill="#4285F4"/><path d="M4.99026 9.69032L1.96026 7.23032C1.38026 8.38032 1.05026 9.66032 1.00026 10.9903C1.00026 12.0103 1.15026 13.0103 1.45026 13.9603L4.99026 9.69032Z" fill="#FBBC04"/><path d="M12.0003 23.25C15.1103 23.25 17.7503 22.21 19.5303 20.47L15.8203 18.57C14.6903 19.33 13.3803 19.75 12.0003 19.75C9.40031 19.75 7.19031 18.04 6.20031 15.65L3.17031 18.11C4.46031 20.69 7.26031 22.25 10.3603 22.58C10.7303 22.84 11.1503 23.04 11.5803 23.19C11.7203 23.23 11.8603 23.25 12.0003 23.25Z" fill="#34A853"/>
-                            </svg>
-                            Google-ээр нэвтрэх
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </main>
-
-    <div id="register-popover" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white shadow-2xl rounded-xl p-8 sm:p-10 w-full max-w-md relative animate-zoom-in">
-            <button id="close-register-popover" class="absolute top-4 right-4 text-gray-500 hover:text-gray-800 transition">
-                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-            <h2 class="text-3xl font-bold text-center text-primaryBlue mb-6">Бүртгүүлэх</h2>
-
-            <form id="register-form" class="space-y-6">
-                <div>
-                    <label for="register-email" class="block text-sm font-semibold text-textDark mb-2">Имэйл хаяг</label>
-                    <input
-                        type="email"
-                        id="register-email"
-                        name="email"
-                        required
-                        autocomplete="email"
-                        placeholder="Таны имэйл"
-                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
-                    />
-                </div>
-                <div>
-                    <label for="register-password" class="block text-sm font-semibold text-textDark mb-2">Нууц үг</label>
-                    <input
-                        type="password"
-                        id="register-password"
-                        name="password"
-                        required
-                        autocomplete="new-password"
-                        placeholder="Нууц үг үүсгэх"
-                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
-                    />
-                </div>
-                <div>
-                    <label for="register-confirm-password" class="block text-sm font-semibold text-textDark mb-2">Нууц үг давтах</label>
-                    <input
-                        type="password"
-                        id="register-confirm-password"
-                        name="confirm_password"
-                        required
-                        autocomplete="new-password"
-                        placeholder="Нууц үгээ давтах"
-                        class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primaryBlue focus:border-primaryBlue outline-none transition duration-200 ease-in-out placeholder-gray-400"
-                    />
-                </div>
-
-                <button
-                    type="submit"
-                    id="register-button"
-                    class="w-full bg-primaryBlue text-white font-bold py-3 px-4 rounded-lg hover:bg-accentCyan focus:outline-none focus:ring-2 focus:ring-primaryBlue focus:ring-opacity-50 transition duration-200 ease-in-out transform hover:scale-105"
-                >
-                    Бүртгүүлэх
-                </button>
-
-                <p id="register-message" class="text-center text-sm mt-4" role="status" aria-live="polite"></p>
-            </form>
-        </div>
-    </div>
+/ ===== 4. LOGIN PAGE SCRIPT (for src/pages/login.astro) =====
+// Replace the script section in your login.astro with this:
 
 
-    <script is:inline>
-        // Custom colors for JavaScript for consistency
-        const primaryBlue = '#004AAD';
-        const accentCyan = '#00C2CB';
-        const textDark = '#212529';
+<script is:inline>
+  import { AuthService } from '../utils/auth.js';
 
-        document.addEventListener("DOMContentLoaded", function () {
-            // --- Login Form Logic ---
-            const loginForm = document.getElementById("login-form");
-            const loginMessageElement = document.getElementById("login-message");
-            const emailInput = document.getElementById("email");
-            const passwordInput = document.getElementById("password");
-            const loginButton = document.getElementById("login-button");
-            const togglePasswordButton = document.getElementById("togglePassword");
+  document.addEventListener("DOMContentLoaded", function () {
+    const loginForm = document.getElementById("login-form");
+    const loginMessageElement = document.getElementById("login-message");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const loginButton = document.getElementById("login-button");
+    const togglePasswordButton = document.getElementById("togglePassword");
 
-            if (!loginForm || !loginMessageElement || !emailInput || !passwordInput || !loginButton || !togglePasswordButton) {
-                console.error("One or more required login elements not found.");
-                // return; // Don't return, as register elements might still be present
-            } else {
-                togglePasswordButton.addEventListener('click', function() {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    this.innerHTML = type === 'password'
-                        ? `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 10 3 0 01-6 0 3 10 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`
-                        : `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.965 9.965 0 011.026-1.789m6.965-2.09A9.965 9.965 0 0112 5c4.478 0 8.268 2.943 9.542 7-.996 3.091-4.045 6-9.542 6.001zm0 0a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
-                });
+    if (!loginForm || !loginMessageElement || !emailInput || !passwordInput || !loginButton) {
+      console.error("One or more required login elements not found.");
+      return;
+    }
 
-                loginForm.addEventListener("submit", async function (event) {
-                    event.preventDefault();
+    // Toggle password visibility
+    if (togglePasswordButton) {
+      togglePasswordButton.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        const eyeIcon = type === 'password' 
+          ? `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 10 3 0 01-6 0 3 10 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>`
+          : `<svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.965 9.965 0 011.026-1.789m6.965-2.09A9.965 9.965 0 0112 5c4.478 0 8.268 2.943 9.542 7-.996 3.091-4.045 6-9.542 6.001zm0 0a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
+        
+        this.innerHTML = eyeIcon;
+      });
+    }
 
-                    const email = (emailInput as HTMLInputElement).value.trim();
-                    const password = (passwordInput as HTMLInputElement).value.trim();
+    // Handle login form submission
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
 
-                    loginMessageElement.textContent = "";
-                    loginMessageElement.style.color = textDark;
-                    loginButton.disabled = true;
-                    loginButton.textContent = "Нэвтэрч байна...";
-                    loginButton.classList.add("opacity-75", "cursor-not-allowed");
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
 
-                    try {
-                        const response = await fetch("http://localhost:5000/login", {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json"
-                            },
-                            body: JSON.stringify({ email, password })
-                        });
+      if (!email || !password) {
+        loginMessageElement.textContent = "❌ Имэйл болон нууц үгээ оруулна уу.";
+        loginMessageElement.style.color = "red";
+        return;
+      }
 
-                        if (response.ok) {
-                            const data = await response.json();
-                            loginMessageElement.textContent = "✅ Амжилттай нэвтэрлээ!";
-                            loginMessageElement.style.color = "green";
-                            localStorage.setItem("token", data.token);
-                            setTimeout(() => window.location.href = "/", 1500);
-                        } else {
-                            const errorData = await response.json();
-                            loginMessageElement.textContent = `❌ Алдаа: ${errorData.message || response.statusText}`;
-                            loginMessageElement.style.color = "red";
-                        }
-                    } catch (error) {
-                        console.error("Login failed:", error);
-                        loginMessageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
-                        loginMessageElement.style.color = "red";
-                    } finally {
-                        loginButton.disabled = false;
-                        loginButton.textContent = "Нэвтрэх";
-                        loginButton.classList.remove("opacity-75", "cursor-not-allowed");
-                    }
-                });
-            }
+      loginMessageElement.textContent = "";
+      loginButton.disabled = true;
+      loginButton.textContent = "Нэвтэрч байна...";
+      loginButton.classList.add("opacity-75", "cursor-not-allowed");
 
+      try {
+        // Import the API client dynamically
+        const { default: apiClient } = await import('../api/apiClient.jsx');
+        const result = await apiClient.auth.login(email, password);
 
-            // --- Register Popover Logic ---
-            const openRegisterPopoverBtn = document.getElementById("open-register-popover");
-            const registerPopover = document.getElementById("register-popover");
-            const closeRegisterPopoverBtn = document.getElementById("close-register-popover");
-            const registerForm = document.getElementById("register-form");
-            const registerMessageElement = document.getElementById("register-message");
-            const registerEmailInput = document.getElementById("register-email") as HTMLInputElement;
-            const registerPasswordInput = document.getElementById("register-password") as HTMLInputElement;
-            const registerConfirmPasswordInput = document.getElementById("register-confirm-password") as HTMLInputElement;
-            const registerButton = document.getElementById("register-button");
-
-            if (!openRegisterPopoverBtn || !registerPopover || !closeRegisterPopoverBtn || !registerForm || !registerMessageElement || !registerEmailInput || !registerPasswordInput || !registerConfirmPasswordInput || !registerButton) {
-                console.error("One or more required register elements not found.");
-                return;
-            }
-
-            // Open popover
-            openRegisterPopoverBtn.addEventListener("click", function(event) {
-                event.preventDefault(); // Prevent default link behavior
-                registerPopover.classList.remove("hidden");
-                document.body.style.overflow = "hidden"; // Prevent scrolling behind popover
-            });
-
-            // Close popover when close button is clicked
-            closeRegisterPopoverBtn.addEventListener("click", function() {
-                registerPopover.classList.add("hidden");
-                document.body.style.overflow = ""; // Restore scrolling
-                registerForm.reset(); // Clear form on close
-                registerMessageElement.textContent = ""; // Clear messages
-            });
-
-            // Close popover when clicking outside the modal content
-            registerPopover.addEventListener("click", function(event) {
-                if (event.target === registerPopover) {
-                    registerPopover.classList.add("hidden");
-                    document.body.style.overflow = ""; // Restore scrolling
-                    registerForm.reset(); // Clear form on close
-                    registerMessageElement.textContent = ""; // Clear messages
-                }
-            });
-
-            // Handle register form submission
-            registerForm.addEventListener("submit", async function (event) {
-                event.preventDefault();
-
-                const email = registerEmailInput.value.trim();
-                const password = registerPasswordInput.value.trim();
-                const confirmPassword = registerConfirmPasswordInput.value.trim();
-
-                // Basic client-side validation
-                if (password !== confirmPassword) {
-                    registerMessageElement.textContent = "❌ Нууц үгнүүд таарахгүй байна!";
-                    registerMessageElement.style.color = "red";
-                    return;
-                }
-
-                registerMessageElement.textContent = "";
-                registerMessageElement.style.color = textDark;
-                registerButton.disabled = true;
-                registerButton.textContent = "Бүртгүүлж байна...";
-                registerButton.classList.add("opacity-75", "cursor-not-allowed");
-
-                try {
-                    const response = await fetch("http://localhost:5000/register", { // Assuming a /register endpoint
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({ email, password })
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        registerMessageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Одоо нэвтэрнэ үү.";
-                        registerMessageElement.style.color = "green";
-                        registerForm.reset(); // Clear form after successful registration
-                        // Optionally, auto-close popover after a delay
-                        setTimeout(() => {
-                            registerPopover.classList.add("hidden");
-                            document.body.style.overflow = "";
-                            // Optionally, pre-fill login form with registered email
-                            if (emailInput) {
-                                (emailInput as HTMLInputElement).value = email;
-                            }
-                        }, 2000);
-                    } else {
-                        const errorData = await response.json();
-                        registerMessageElement.textContent = `❌ Алдаа: ${errorData.message || response.statusText}`;
-                        registerMessageElement.style.color = "red";
-                    }
-                } catch (error) {
-                    console.error("Registration failed:", error);
-                    registerMessageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
-                    registerMessageElement.style.color = "red";
-                } finally {
-                    registerButton.disabled = false;
-                    registerButton.textContent = "Бүртгүүлэх";
-                    registerButton.classList.remove("opacity-75", "cursor-not-allowed");
-                }
-            });
-        });
-
-        // Simple toggle for any sidebar if toggleBtn exists - kept from original
-        function toggleSidebar() {
-            console.log("Toggle sidebar function called.");
-            // Implement your sidebar toggling logic here.
-            // This might involve manipulating classes on a parent element or a dedicated sidebar component.
+        if (result.success) {
+          loginMessageElement.textContent = "✅ Амжилттай нэвтэрлээ!";
+          loginMessageElement.style.color = "green";
+          
+          // Redirect after successful login
+          setTimeout(() => {
+            const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/';
+            window.location.href = redirectUrl;
+          }, 1500);
+        } else {
+          loginMessageElement.textContent = `❌ ${result.message}`;
+          loginMessageElement.style.color = "red";
         }
-    </script>
+      } catch (error) {
+        console.error("Login failed:", error);
+        loginMessageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+        loginMessageElement.style.color = "red";
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "Нэвтрэх";
+        loginButton.classList.remove("opacity-75", "cursor-not-allowed");
+      }
+    });
+  });
+</script>
+*/
 
-    <style is:global>
-        /* Optional: Add a subtle fade-in animation for the card */
-        @keyframes fade-in {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        .animate-fade-in {
-            animation: fade-in 0.5s ease-out forwards;
-        }
+// ===== 5. REGISTER PAGE SCRIPT (for src/pages/register.astro) =====
+// Replace the script section in your register.astro with this:
 
-        /* Animation for the popover */
-        @keyframes zoom-in {
-            from {
-                opacity: 0;
-                transform: scale(0.9);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+/*
+<script is:inline>
+  document.addEventListener("DOMContentLoaded", function () {
+    const form = document.getElementById("register-form-page");
+    const emailInput = document.getElementById("register-email-page");
+    const passwordInput = document.getElementById("register-password-page");
+    const confirmPasswordInput = document.getElementById("register-confirm-password-page");
+    const messageElement = document.getElementById("register-message-page");
+    const registerButton = document.getElementById("register-button-page");
+
+    if (!form || !emailInput || !passwordInput || !confirmPasswordInput || !messageElement || !registerButton) {
+      console.error("One or more required registration page elements not found.");
+      return;
+    }
+
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value.trim();
+      const confirmPassword = confirmPasswordInput.value.trim();
+
+      // Client-side validation
+      if (!email || !password || !confirmPassword) {
+        messageElement.textContent = "❌ Бүх талбарыг бөглөнө үү!";
+        messageElement.style.color = "red";
+        return;
+      }
+
+      if (password.length < 6) {
+        messageElement.textContent = "❌ Нууц үг дор хаяж 6 тэмдэгтээс тогтоно!";
+        messageElement.style.color = "red";
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        messageElement.textContent = "❌ Нууц үгнүүд таарахгүй байна!";
+        messageElement.style.color = "red";
+        return;
+      }
+
+      messageElement.textContent = "";
+      registerButton.disabled = true;
+      registerButton.textContent = "Бүртгүүлж байна...";
+      registerButton.classList.add("opacity-75", "cursor-not-allowed");
+
+      try {
+        // Import the API client dynamically
+        const { default: apiClient } = await import('../api/apiClient.jsx');
+        
+        // Extract name from email (or you can add a name field)
+        const fullName = email.split('@')[0];
+        
+        const result = await apiClient.auth.register(fullName, email, password, 'USER');
+
+        if (result.success) {
+          messageElement.textContent = "✅ Амжилттай бүртгэгдлээ! Нэвтрэх хуудас руу шилжинэ үү.";
+          messageElement.style.color = "green";
+          form.reset();
+          
+          // Redirect to login page after successful registration
+          setTimeout(() => window.location.href = '/login', 2000);
+        } else {
+          messageElement.textContent = `❌ ${result.message}`;
+          messageElement.style.color = "red";
         }
-        .animate-zoom-in {
-            animation: zoom-in 0.3s ease-out forwards;
-        }
-    </style>
-</BaseLayout>
+      } catch (error) {
+        console.error("Registration request failed:", error);
+        messageElement.textContent = "❌ Сервертэй холбогдоход алдаа гарлаа. Дахин оролдоно уу.";
+        messageElement.style.color = "red";
+      } finally {
+        registerButton.disabled = false;
+        registerButton.textContent = "Бүртгүүлэх";
+        registerButton.classList.remove("opacity-75", "cursor-not-allowed");
+      }
+    });
+  });
+</script>

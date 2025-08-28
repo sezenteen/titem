@@ -1,7 +1,8 @@
+// ===== 1. FIXED API CLIENT (src/api/apiClient.jsx) =====
 import axios from 'axios';
 
-// Base URL configuration with fallback
-const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.PUBLIC_API_BASE) || 'http://titemplaza.mn:8080/api';
+// Base URL configuration - UPDATED to match your backend
+const API_BASE = 'http://localhost:8080/api';
 
 // Create axios instance
 const api = axios.create({
@@ -13,16 +14,37 @@ const api = axios.create({
   maxBodyLength: Infinity,
 });
 
-// Example interceptor hooks (extend as needed)
+// Auth token management
+let authToken = null;
+if (typeof localStorage !== 'undefined') {
+  authToken = localStorage.getItem('authToken');
+}
+
+// Request interceptor to add auth header
 api.interceptors.request.use((config) => {
-  // You can inject auth token here
+  if (authToken) {
+    // For HTTP Basic auth with your Spring Security setup
+    config.headers.Authorization = `Basic ${authToken}`;
+  }
   return config;
 });
 
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Normalize error
+    if (error.response?.status === 401) {
+      // Clear invalid token
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('authToken');
+      }
+      authToken = null;
+      // Optionally redirect to login
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+    }
+    
     const normalized = new Error(error?.response?.data?.message || error?.message || 'API error');
     normalized.status = error?.response?.status;
     normalized.data = error?.response?.data;
@@ -30,55 +52,127 @@ api.interceptors.response.use(
   }
 );
 
-// Helpers
+// Helper functions
 const buildPageParams = (page = 0, size = 20) => ({ params: { page, size } });
 
-// Endpoints
-const products = {
-  getPage: (page = 0, size = 20) => api.get('/product', buildPageParams(page, size)).then(r => r.data),
-  getById: (id) => api.get(`/product/id/${id}`).then(r => r.data), // ⭐ Corrected URL path
-  getByCategoryId: (categoryId, page = 0, size = 20) => api.get(`/product/category/${categoryId}`, buildPageParams(page, size)).then(r => r.data),
-  create: (payload) => api.post('/product', payload).then(r => r.data),
-  update: (id, payload) => api.put(`/product/${id}`, payload).then(r => r.data),
-  remove: (id) => api.delete(`/product/${id}`).then(r => r.data),
-  // Convenience: fetch large page and filter locally (for rare cases like barcode search)
-  findByBarcodeLocal: async (barcode, maxPages = 10, pageSize = 500) => {
-    for (let page = 0; page < maxPages; page += 1) {
-      const data = await products.getPage(page, pageSize);
-      const match = (data?.content || []).find((p) => p?.barcode === barcode);
-      if (match) return match;
-      if (page >= (data?.totalPages || 1) - 1) break;
+// Auth functions
+const auth = {
+  login: async (email, password) => {
+    // Create Basic Auth token
+    const token = btoa(`${email}:${password}`);
+    
+    try {
+      // Test the credentials by making a request to a protected endpoint
+      const response = await axios.get(`${API_BASE}/user`, {
+        headers: {
+          Authorization: `Basic ${token}`
+        }
+      });
+      
+      // If successful, store the token
+      authToken = token;
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('userEmail', email);
+      }
+      
+      return { success: true, message: 'Login successful' };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.status === 401 ? 'Invalid credentials' : 'Login failed' 
+      };
     }
-    return null;
   },
   
+  register: async (fullName, email, password, role = 'USER') => {
+    try {
+      const response = await api.post('/user', {
+        fullName,
+        email,
+        password,
+        role
+      });
+      
+      return { success: true, message: 'Registration successful', data: response.data };
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Registration failed' 
+      };
+    }
+  },
+  
+  logout: () => {
+    authToken = null;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userEmail');
+    }
+  },
+  
+  isLoggedIn: () => {
+    return !!authToken;
+  },
+  
+  getCurrentUser: () => {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('userEmail');
+    }
+    return null;
+  }
 };
 
+// Products endpoints - FIXED to match your backend
+const products = {
+  getPage: (page = 0, size = 20) => 
+    api.get('/product', buildPageParams(page, size)).then(r => r.data),
+  
+  getById: (id) => 
+    api.get(`/product/id/${id}`).then(r => r.data),
+  
+  getByCategoryId: (categoryId, page = 0, size = 20) => 
+    api.get(`/product/category/${categoryId}`, buildPageParams(page, size)).then(r => r.data),
+  
+  create: (payload) => 
+    api.post('/product', payload).then(r => r.data),
+  
+  update: (id, payload) => 
+    api.put(`/product/${id}`, payload).then(r => r.data),
+  
+  remove: (id) => 
+    api.delete(`/product/${id}`).then(r => r.data),
+  
+  searchByName: (name) =>
+    api.get(`/product/name/${name}`).then(r => r.data),
+  
+  getByBarcode: (barcode) =>
+    api.get(`/product/barcode/${barcode}`).then(r => r.data)
+};
+
+// Categories endpoints - FIXED
 const categories = {
   getAll: () => api.get('/category').then(r => r.data),
+  getById: (id) => api.get(`/category/${id}`).then(r => r.data),
   create: (payload) => api.post('/category', payload).then(r => r.data),
   update: (id, payload) => api.put(`/category/${id}`, payload).then(r => r.data),
-  remove: (id) => api.delete('/category/${id}').then(r => r.data),
+  remove: (id) => api.delete(`/category/${id}`).then(r => r.data),
 };
 
+// Users endpoints - FIXED
 const users = {
-  // Admin endpoints for users
-  getAll: () => api.get('/admin/user').then(r => r.data),
-  create: (payload) => api.post('/admin/user', payload).then(r => r.data),
-  update: (id, payload) => api.put(`/admin/user/${id}`, payload).then(r => r.data),
-  remove: (id) => api.delete(`/admin/user/${id}`).then(r => r.data),
-};
-
-const settings = {
-  get: () => api.get('/settings').then(r => r.data),
-  update: (payload) => api.put('/settings', payload).then(r => r.data),
+  getAll: () => api.get('/user').then(r => r.data),
+  getById: (id) => api.get(`/user/${id}`).then(r => r.data),
+  create: (payload) => api.post('/user', payload).then(r => r.data),
+  update: (id, payload) => api.put(`/user/${id}`, payload).then(r => r.data),
+  remove: (id) => api.delete(`/user/${id}`).then(r => r.data),
 };
 
 export default {
   axios: api,
   baseURL: API_BASE,
+  auth,
   products,
   categories,
   users,
-  settings,
 };
