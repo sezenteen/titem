@@ -1,13 +1,13 @@
 ---
-// src/pages/product/[id].astro - IMPROVED VERSION
+// src/pages/product/[id].astro - WITH CART FUNCTIONALITY
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import apiClient from '../../api/apiClient.jsx';
 
-// Optimized static path generation with better error handling
+// Static path generation (same as before)
 export async function getStaticPaths() {
   const allPaths = [];
   let page = 0;
-  const pageSize = 100; // Reasonable page size
+  const pageSize = 100;
   let hasMorePages = true;
 
   try {
@@ -15,7 +15,6 @@ export async function getStaticPaths() {
       const data = await apiClient.products.getPage(page, pageSize);
       
       if (data?.content?.length > 0) {
-        // Add paths for products on current page
         const pagePaths = data.content.map(product => ({
           params: { id: String(product.id) },
           props: { 
@@ -25,65 +24,49 @@ export async function getStaticPaths() {
           }
         }));
         allPaths.push(...pagePaths);
-
-        // Check if we have more pages
         hasMorePages = page < (data.totalPages - 1);
         page++;
       } else {
         hasMorePages = false;
       }
     }
-
-    console.log(`Generated ${allPaths.length} product paths for static generation`);
     return allPaths;
-    
   } catch (error) {
     console.error('Error fetching products for static paths:', error);
-    return []; // Return empty array to prevent build failure
+    return [];
   }
 }
 
-// Get parameters from URL and props
 const { id } = Astro.params;
 const { productName, categoryId, categoryName } = Astro.props;
 
 let product = null;
 let relatedProducts = [];
-let category = null;
 let error = null;
 
-// Fetch the product by ID
+// Fetch product and related products
 try {
   product = await apiClient.products.getById(id);
   
-  // If product exists, try to fetch related products from the same category
   if (product?.categoryID?.id) {
     try {
       const relatedData = await apiClient.products.getByCategoryId(
-        product.categoryID.id, 
-        0, // First page
-        8  // Limit to 8 related products
+        product.categoryID.id, 0, 8
       );
-      
       if (relatedData?.content) {
-        // Filter out current product and limit results
         relatedProducts = relatedData.content
           .filter(p => p.id !== product.id)
           .slice(0, 6);
       }
     } catch (relatedError) {
       console.warn('Could not fetch related products:', relatedError);
-      // Don't set error here, just continue without related products
     }
   }
-  
 } catch (e) {
   console.error(`Error fetching product with ID ${id}:`, e);
-  if (e.response?.status === 404) {
-    error = "Уучлаарай, ийм дугаартай бүтээгдэхүүн олдсонгүй.";
-  } else {
-    error = "Бүтээгдэхүүнийг татахад алдаа гарлаа. Дахин оролдоно уу.";
-  }
+  error = e.response?.status === 404 
+    ? "Уучлаарай, ийм дугаартай бүтээгдэхүүн олдсонгүй."
+    : "Бүтээгдэхүүнийг татахад алдаа гарлаа. Дахин оролдоно уу.";
 }
 
 // Helper functions
@@ -97,24 +80,6 @@ function getImageUrl(imagePath, productName = 'Бүтээгдэхүүн') {
   return `https://placehold.co/600x600/f3f4f6/6b7280?text=${encodeURIComponent(productName)}`;
 }
 
-// Generate structured data for SEO
-const structuredData = product ? {
-  "@context": "https://schema.org/",
-  "@type": "Product",
-  "name": product.name,
-  "description": product.shortName || product.name,
-  "sku": product.barcode,
-  "offers": {
-    "@type": "Offer",
-    "url": `${Astro.url.origin}/product/${product.id}`,
-    "priceCurrency": "MNT",
-    "price": product.price,
-    "availability": "https://schema.org/InStock"
-  },
-  "category": product.categoryID?.name
-} : null;
-
-// Page title and meta description
 const pageTitle = product ? `${product.name} - Дэлгэрэнгүй` : "Бүтээгдэхүүн олдсонгүй";
 const pageDescription = product 
   ? `${product.name} - ${formatPrice(product.price)}. ${product.shortName || ''}`
@@ -122,9 +87,8 @@ const pageDescription = product
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
-  {structuredData && (
-    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
-  )}
+  <!-- Import necessary scripts -->
+  <script src="https://unpkg.com/axios@1.6.0/dist/axios.min.js"></script>
   
   <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Breadcrumb navigation -->
@@ -154,7 +118,7 @@ const pageDescription = product
                 <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
               </svg>
               <span class="font-medium text-gray-900 truncate max-w-xs">
-                {product.name}
+                {product?.name}
               </span>
             </li>
           </>
@@ -164,15 +128,25 @@ const pageDescription = product
 
     <!-- Back button -->
     <div class="mb-6">
-      <a 
-        href="javascript:history.back()" 
+      <button 
+        onclick="history.back()" 
         class="inline-flex items-center text-sm text-[#003375] hover:text-[#f7941e] font-medium transition-colors"
       >
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
         </svg>
         Буцах
-      </a>
+      </button>
+    </div>
+
+    <!-- Cart notification -->
+    <div id="cart-notification" class="fixed top-4 right-4 z-50 hidden">
+      <div class="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <span id="cart-message">Сагсанд нэмэгдлээ!</span>
+      </div>
     </div>
     
     <!-- Error state -->
@@ -248,6 +222,40 @@ const pageDescription = product
                   )}
                 </div>
 
+                <!-- Quantity selector -->
+                <div class="flex items-center space-x-4">
+                  <label class="text-sm font-medium text-gray-700">Тоо ширхэг:</label>
+                  <div class="flex items-center border border-gray-300 rounded-lg">
+                    <button 
+                      id="decrease-qty"
+                      class="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                      onclick="updateQuantity(-1)"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                      </svg>
+                    </button>
+                    <input 
+                      type="number" 
+                      id="quantity" 
+                      value="1" 
+                      min="1" 
+                      max="99"
+                      class="w-16 px-3 py-2 text-center border-0 focus:outline-none focus:ring-0"
+                      onchange="validateQuantity()"
+                    />
+                    <button 
+                      id="increase-qty"
+                      class="px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 transition-colors"
+                      onclick="updateQuantity(1)"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
                 <!-- Product details -->
                 <div class="border-t border-gray-200 pt-6">
                   <h2 class="text-xl font-semibold text-gray-900 mb-4">Дэлгэрэнгүй мэдээлэл</h2>
@@ -291,13 +299,34 @@ const pageDescription = product
 
                 <!-- Action buttons -->
                 <div class="border-t border-gray-200 pt-6">
-                  <div class="flex flex-col sm:flex-row gap-3">
-                    <button class="flex-1 bg-[#f7941e] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#e6831c] transition-colors focus:outline-none focus:ring-2 focus:ring-[#f7941e] focus:ring-offset-2">
-                      Сагсанд нэмэх
+                  <div class="flex flex-col gap-3">
+                    <!-- Add to cart button -->
+                    <button 
+                      id="add-to-cart-btn"
+                      class="w-full bg-[#f7941e] text-white px-6 py-4 rounded-lg font-semibold hover:bg-[#e6831c] transition-colors focus:outline-none focus:ring-2 focus:ring-[#f7941e] focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                      onclick="addToCart({product.id}, '{product.name}')"
+                    >
+                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m0 0h9m-9 0h9m0 0l1.5-6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
+                      </svg>
+                      <span id="cart-btn-text">Сагсанд нэмэх</span>
                     </button>
-                    <button class="flex-1 border-2 border-[#003375] text-[#003375] px-6 py-3 rounded-lg font-semibold hover:bg-[#003375] hover:text-white transition-colors focus:outline-none focus:ring-2 focus:ring-[#003375] focus:ring-offset-2">
-                      Дэлгүүрт харах
-                    </button>
+                    
+                    <!-- Secondary actions -->
+                    <div class="flex gap-3">
+                      <a 
+                        href="/cart" 
+                        class="flex-1 border-2 border-[#003375] text-[#003375] px-4 py-3 rounded-lg font-semibold hover:bg-[#003375] hover:text-white transition-colors text-center"
+                      >
+                        Сагс үзэх
+                      </a>
+                      <button 
+                        class="flex-1 border border-gray-300 text-gray-700 px-4 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                        onclick="window.print()"
+                      >
+                        Хэвлэх
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -322,13 +351,13 @@ const pageDescription = product
             
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
               {relatedProducts.map((relatedProduct) => (
-                <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
+                <div class="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow group">
                   <a href={`/product/${relatedProduct.id}`} class="block">
                     <div class="aspect-square p-3">
                       <img 
                         src={getImageUrl(relatedProduct.imagePath, relatedProduct.name)} 
                         alt={relatedProduct.name}
-                        class="w-full h-full object-contain rounded"
+                        class="w-full h-full object-contain rounded group-hover:scale-105 transition-transform"
                         loading="lazy"
                       />
                     </div>
@@ -341,6 +370,15 @@ const pageDescription = product
                       </p>
                     </div>
                   </a>
+                  <!-- Quick add to cart for related products -->
+                  <div class="px-3 pb-3">
+                    <button 
+                      class="w-full bg-gray-100 hover:bg-[#f7941e] hover:text-white text-gray-700 text-xs py-2 rounded transition-colors"
+                      onclick="addToCart({relatedProduct.id}, '{relatedProduct.name}', 1)"
+                    >
+                      + Сагс
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -348,3 +386,187 @@ const pageDescription = product
         )}
       </>
     )}
+  </main>
+
+  <!-- Cart functionality script -->
+  <script is:inline>
+    // Cart management
+    const API_BASE = 'http://localhost:8080/api';
+    
+    // Get auth token
+    function getAuthToken() {
+      return localStorage.getItem('authToken');
+    }
+
+    // Create axios instance for cart operations
+    const api = axios.create({
+      baseURL: API_BASE,
+      timeout: 15000,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    // Add auth header to requests
+    api.interceptors.request.use((config) => {
+      const token = getAuthToken();
+      if (token) {
+        config.headers.Authorization = `Basic ${token}`;
+      }
+      return config;
+    });
+
+    // Quantity management
+    function updateQuantity(change) {
+      const qtyInput = document.getElementById('quantity');
+      const currentQty = parseInt(qtyInput.value) || 1;
+      const newQty = Math.max(1, Math.min(99, currentQty + change));
+      qtyInput.value = newQty;
+    }
+
+    function validateQuantity() {
+      const qtyInput = document.getElementById('quantity');
+      const qty = parseInt(qtyInput.value);
+      if (isNaN(qty) || qty < 1) {
+        qtyInput.value = 1;
+      } else if (qty > 99) {
+        qtyInput.value = 99;
+      }
+    }
+
+    // Show notification
+    function showNotification(message, type = 'success') {
+      const notification = document.getElementById('cart-notification');
+      const messageEl = document.getElementById('cart-message');
+      
+      messageEl.textContent = message;
+      
+      // Update notification style based on type
+      const notificationContent = notification.firstElementChild;
+      if (type === 'error') {
+        notificationContent.className = 'bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center';
+      } else {
+        notificationContent.className = 'bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center';
+      }
+      
+      notification.classList.remove('hidden');
+      
+      // Auto hide after 3 seconds
+      setTimeout(() => {
+        notification.classList.add('hidden');
+      }, 3000);
+    }
+
+    // Update cart count in header (if you have a cart counter)
+    function updateCartCount() {
+      const cartId = localStorage.getItem('cartId');
+      if (cartId) {
+        api.get(`/carts/${cartId}`)
+          .then(response => {
+            const cartData = response.data;
+            const totalItems = cartData.items ? cartData.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+            
+            // Update cart counter if it exists
+            const cartCounter = document.querySelector('[data-cart-count]');
+            if (cartCounter) {
+              cartCounter.textContent = totalItems;
+              cartCounter.classList.toggle('hidden', totalItems === 0);
+            }
+          })
+          .catch(error => {
+            console.warn('Could not update cart count:', error);
+          });
+      }
+    }
+
+    // Add to cart function
+    async function addToCart(productId, productName, customQuantity = null) {
+      const btn = document.getElementById('add-to-cart-btn');
+      const btnText = document.getElementById('cart-btn-text');
+      const qtyInput = document.getElementById('quantity');
+      
+      const quantity = customQuantity || parseInt(qtyInput?.value) || 1;
+      
+      // Disable button during request
+      if (btn) {
+        btn.disabled = true;
+        btnText.textContent = 'Нэмж байна...';
+      }
+
+      try {
+        let cartId = localStorage.getItem('cartId');
+        
+        // Create cart if it doesn't exist
+        if (!cartId) {
+          const cartResponse = await api.post('/carts');
+          cartId = cartResponse.data.id;
+          localStorage.setItem('cartId', cartId);
+        }
+
+        // Add product to cart
+        await api.post(`/carts/${cartId}/add/${productId}`, null, {
+          params: { quantity: quantity }
+        });
+
+        // Show success message
+        const message = quantity === 1 
+          ? `"${productName}" сагсанд нэмэгдлээ!` 
+          : `"${productName}" (${quantity} ширхэг) сагсанд нэмэгдлээ!`;
+        showNotification(message, 'success');
+        
+        // Update cart count
+        updateCartCount();
+
+      } catch (error) {
+        console.error('Cart error:', error);
+        let errorMessage = 'Сагсанд нэмэхэд алдаа гарлаа.';
+        
+        if (error.response?.status === 401) {
+          errorMessage = 'Нэвтэрч орно уу.';
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        
+        showNotification(errorMessage, 'error');
+      } finally {
+        // Re-enable button
+        if (btn) {
+          btn.disabled = false;
+          btnText.textContent = 'Сагсанд нэмэх';
+        }
+      }
+    }
+
+    // Update cart count on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      updateCartCount();
+    });
+  </script>
+</BaseLayout>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Loading animation */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .animate-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Notification animation */
+  #cart-notification {
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+  }
+
+  #cart-notification:not(.hidden) {
+    transform: translateX(0);
+  }
+</style>

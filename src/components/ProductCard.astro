@@ -1,4 +1,5 @@
 ---
+// src/components/ProductCard.astro - WITH CART FUNCTIONALITY
 interface Props {
   id: number;
   name: string;
@@ -13,20 +14,206 @@ const { product } = Astro.props as { product: Props };
 const displayImage = product.imagePath || 'https://placehold.co/600x400/E5E7EB/6B7280?text=No+Image';
 const displayShort = product.shortName || '';
 const displayPrice = product.price ?? '-';
+const formattedPrice = typeof displayPrice === 'number' 
+  ? new Intl.NumberFormat('mn-MN').format(displayPrice) + ' ₮' 
+  : displayPrice;
 ---
-<div class="bg-white shadow rounded-lg overflow-hidden">
-  <img src={displayImage} alt={product.name} class="w-full h-48 object-cover" />
-  <div class="p-4">
-    <h2 class="text-base sm:text-lg font-semibold text-gray-900 truncate">{product.name}</h2>
-    {displayShort && <p class="text-sm text-gray-600 truncate">{displayShort}</p>}
+
+<div class="bg-white shadow-sm rounded-xl overflow-hidden border hover:shadow-md transition-all duration-300 group">
+  <!-- Product Image -->
+  <div class="relative aspect-square bg-gray-50 overflow-hidden">
+    <img 
+      src={displayImage} 
+      alt={product.name} 
+      class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+      loading="lazy"
+    />
+    
+    <!-- Quick add to cart button overlay -->
+    <button 
+      class="absolute top-3 right-3 bg-white bg-opacity-90 hover:bg-[#f7941e] text-gray-700 hover:text-white p-2 rounded-full shadow-md transition-all duration-200 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0"
+      onclick="quickAddToCart({product.id}, '{product.name}')"
+      title="Сагсанд нэмэх"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m0 0h9m-9 0h9m0 0l1.5-6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
+      </svg>
+    </button>
+    
+    <!-- Category badge -->
     {(product.categoryName || product.categoryId) && (
-      <p class="mt-1 text-xs text-gray-500">
-        Ангилал: {product.categoryName || `ID ${product.categoryId}`}
+      <div class="absolute top-3 left-3">
+        <span class="bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded-full">
+          {product.categoryName || `ID ${product.categoryId}`}
+        </span>
+      </div>
+    )}
+  </div>
+
+  <!-- Product Info -->
+  <div class="p-4 space-y-3">
+    <!-- Product Name -->
+    <h3 class="text-base font-semibold text-gray-900 line-clamp-2 min-h-[2.5rem] leading-tight">
+      {product.name}
+    </h3>
+
+    <!-- Short Description -->
+    {displayShort && (
+      <p class="text-sm text-gray-600 line-clamp-2 min-h-[2.5rem]">
+        {displayShort}
       </p>
     )}
-    <p class="mt-2 text-gray-800">Үнэ: {displayPrice}{typeof displayPrice === 'number' ? ' ₮' : ''}</p>
-    <a href={`/product/${product.id}`} class="mt-4 inline-block bg-[#f7941e] text-white px-4 py-2 rounded hover:bg-[#e6831c]">
-      Дэлгэрэнгүй
-    </a>
+
+    <!-- Price -->
+    <div class="flex items-center justify-between">
+      <div>
+        <span class="text-lg font-bold text-[#f7941e]">
+          {formattedPrice}
+        </span>
+        {typeof displayPrice === 'number' && displayPrice > 0 && (
+          <p class="text-xs text-gray-500 mt-1">НӨАТ багтсан</p>
+        )}
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-2 pt-2">
+      <!-- View Details Button -->
+      <a 
+        href={`/product/${product.id}`} 
+        class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 text-sm font-medium py-2.5 px-4 rounded-lg transition-colors text-center"
+      >
+        Дэлгэрэнгүй
+      </a>
+      
+      <!-- Add to Cart Button -->
+      <button 
+        class="flex-1 bg-[#f7941e] hover:bg-[#e6831c] text-white text-sm font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        onclick="quickAddToCart({product.id}, '{product.name}')"
+        data-product-id="{product.id}"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-1.5 6M7 13l-1.5 6m0 0h9m-9 0h9m0 0l1.5-6M17 13v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6"></path>
+        </svg>
+        <span class="cart-btn-text">Сагс</span>
+      </button>
+    </div>
   </div>
 </div>
+
+<style>
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>
+
+<script is:inline>
+  // Quick add to cart function for product cards
+  async function quickAddToCart(productId, productName) {
+    const button = document.querySelector(`[data-product-id="${productId}"]`);
+    const btnText = button?.querySelector('.cart-btn-text');
+    
+    // Disable button during request
+    if (button) {
+      button.disabled = true;
+      if (btnText) btnText.textContent = 'Нэмж...';
+    }
+
+    try {
+      // Use the same cart API as the main product page
+      const API_BASE = 'http://localhost:8080/api';
+      
+      // Create axios instance
+      const api = axios.create({
+        baseURL: API_BASE,
+        timeout: 15000,
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      // Add auth header
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        api.defaults.headers.Authorization = `Basic ${token}`;
+      }
+
+      let cartId = localStorage.getItem('cartId');
+      
+      // Create cart if it doesn't exist
+      if (!cartId) {
+        const cartResponse = await api.post('/carts');
+        cartId = cartResponse.data.id;
+        localStorage.setItem('cartId', cartId);
+      }
+
+      // Add product to cart
+      await api.post(`/carts/${cartId}/add/${productId}`, null, {
+        params: { quantity: 1 }
+      });
+
+      // Show success feedback
+      if (btnText) {
+        btnText.textContent = '✓ Нэмэгдлээ';
+        button.classList.remove('bg-[#f7941e]', 'hover:bg-[#e6831c]');
+        button.classList.add('bg-green-600', 'hover:bg-green-700');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+          btnText.textContent = 'Сагс';
+          button.classList.remove('bg-green-600', 'hover:bg-green-700');
+          button.classList.add('bg-[#f7941e]', 'hover:bg-[#e6831c]');
+        }, 2000);
+      }
+
+      // Show notification if function exists
+      if (typeof showNotification === 'function') {
+        showNotification(`"${productName}" сагсанд нэмэгдлээ!`, 'success');
+      }
+
+      // Update cart count if function exists
+      if (typeof updateCartCount === 'function') {
+        updateCartCount();
+      }
+
+    } catch (error) {
+      console.error('Quick add to cart error:', error);
+      
+      // Show error feedback
+      if (btnText) {
+        btnText.textContent = '✗ Алдаа';
+        button.classList.remove('bg-[#f7941e]', 'hover:bg-[#e6831c]');
+        button.classList.add('bg-red-600', 'hover:bg-red-700');
+        
+        // Reset after 2 seconds
+        setTimeout(() => {
+          btnText.textContent = 'Сагс';
+          button.classList.remove('bg-red-600', 'hover:bg-red-700');
+          button.classList.add('bg-[#f7941e]', 'hover:bg-[#e6831c]');
+        }, 2000);
+      }
+
+      // Show error notification if function exists
+      if (typeof showNotification === 'function') {
+        let errorMessage = 'Сагсанд нэмэхэд алдаа гарлаа.';
+        if (error.response?.status === 401) {
+          errorMessage = 'Нэвтэрч орно уу.';
+        }
+        showNotification(errorMessage, 'error');
+      }
+    } finally {
+      // Re-enable button
+      if (button) {
+        button.disabled = false;
+      }
+    }
+  }
+
+  // Make sure axios is available
+  if (typeof axios === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://unpkg.com/axios@1.6.0/dist/axios.min.js';
+    document.head.appendChild(script);
+  }
+</script>

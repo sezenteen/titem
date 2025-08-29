@@ -28,8 +28,9 @@ try {
 <BaseLayout title={categoryTitle}>
   <main class="max-w-7xl mx-auto px-4 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-      <!-- Sidebar -->
-      <aside class="lg:col-span-3">
+      
+      <!-- Sidebar (Desktop) -->
+      <aside class="hidden lg:block lg:col-span-3">
         <div class="bg-white rounded shadow p-4 h-[80vh] overflow-y-auto">
           <h3 class="font-semibold mb-2">Ангилалууд</h3>
           <div class="flex flex-col gap-1">
@@ -49,9 +50,30 @@ try {
         </div>
       </aside>
 
-      <!-- Category Products React Component -->
+      <!-- Mobile dropdown for categories -->
+      <div class="lg:hidden mb-4">
+        <select
+          class="w-full border rounded px-3 py-2"
+          onchange="window.location.href=this.value"
+        >
+          {sidebarCategories.map((cat) => (
+            <option
+              value={`/category/${cat.id}`}
+              selected={String(cat.id) === categoryID}
+            >
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <!-- Category Products -->
       <section class="lg:col-span-9">
-        <CategoryId categoryId={categoryID} categoryTitle={categoryTitle} client:load />
+        <CategoryId
+          categoryId={categoryID}
+          categoryTitle={categoryTitle}
+          client:load
+        />
       </section>
     </div>
   </main>
